@@ -18,10 +18,21 @@
 */
 
 #pragma once
-#include "gdi.h"
+#include "../utils.h"
 
 namespace dmhm {
 
-typedef GDIPresenter Presenter;
+class GDIPresenter {
+
+public:
+
+    GDIPresenter();
+    ~GDIPresenter();
+
+private:
+
+    proxy_ptr<struct GDIPresenterPrivate> p;
+
+};
 
 }

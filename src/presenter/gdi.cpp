@@ -17,11 +17,20 @@
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#pragma once
 #include "gdi.h"
+#include <windows.h>
 
 namespace dmhm {
 
-typedef GDIPresenter Presenter;
+struct GDIPresenterPrivate {
+    HINSTANCE hInstance;
+};
+
+GDIPresenter::GDIPresenter() {
+    p->hInstance = GetModuleHandleW(nullptr);
+}
+
+GDIPresenter::~GDIPresenter() {
+}
 
 }
