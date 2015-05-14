@@ -10,8 +10,11 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 endif()
 
-aux_source_directory(src SRC_SOURCES)
-add_executable(live_danmaku_hime ${SRC_SOURCES})
+aux_source_directory(src SRC_MAIN)
+aux_source_directory(src/fetcher SRC_FETCHER)
+aux_source_directory(src/renderer SRC_RENDERER)
+aux_source_directory(src/presenter SRC_PRESENTER)
+add_executable(live_danmaku_hime ${SRC_MAIN} ${SRC_FETCHER} ${SRC_RENDERER} ${SRC_PRESENTER})
 
 set_target_properties(live_danmaku_hime PROPERTIES
     CXX_STANDARD 11
