@@ -61,7 +61,7 @@ GDIPresenter::GDIPresenter(Application *app) {
         WS_EX_LAYERED,
         reinterpret_cast<const wchar_t *>(wnd_class_atom),
         L"\u5f39\u5e55\u59ec",
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        WS_POPUP,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr,
         nullptr,
