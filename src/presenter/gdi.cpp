@@ -50,6 +50,7 @@ GDIPresenter::GDIPresenter(Application *app) {
     };
     ATOM wnd_class_atom = RegisterClassExW(&wnd_class);
     if(wnd_class_atom == 0) {
+        /* Failed to set window class */
         report_error("\xe8\xae\xbe\xe5\xae\x9a\xe7\xaa\x97\xe5\x8f\xa3\xe7\xb1\xbb\xe5\x9e\x8b\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
@@ -66,6 +67,7 @@ GDIPresenter::GDIPresenter(Application *app) {
         nullptr
     );
     if(!p->hWnd) {
+        /* Failed to create window */
         report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xaa\x97\xe5\x8f\xa3\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
