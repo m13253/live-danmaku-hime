@@ -28,33 +28,34 @@ struct GDIPresenterPrivate {
     Application *app = nullptr;
     HINSTANCE hInstance = nullptr;
     HWND hWnd = nullptr;
-    LRESULT CALLBACK static WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
 GDIPresenter::GDIPresenter(Application *app) {
     p->app = app;
     p->hInstance = GetModuleHandleW(nullptr);
+
     /* Register window class */
-    WNDCLASSEXW wnd_class = {
-        .cbSize = sizeof (WNDCLASSEX),
-        .style = CS_HREDRAW | CS_VREDRAW,
-        .lpfnWndProc = p->WndProc,
-        .cbClsExtra = 0,
-        .cbWndExtra = 0,
-        .hInstance = p->hInstance,
-        .hIcon = LoadIcon(nullptr, IDI_APPLICATION),
-        .hCursor = LoadCursor(nullptr, IDC_ARROW),
-        .hbrBackground = HBRUSH(GetStockObject(BLACK_BRUSH)),
-        .lpszMenuName = nullptr,
-        .lpszClassName = L"com.starbrilliant.danmakuhime",
-        .hIconSm = nullptr
-    };
+    WNDCLASSEXW wnd_class;
+    wnd_class.cbSize = sizeof (WNDCLASSEX),
+    wnd_class.style = CS_HREDRAW | CS_VREDRAW,
+    wnd_class.lpfnWndProc = p->WndProc,
+    wnd_class.cbClsExtra = 0,
+    wnd_class.cbWndExtra = 0,
+    wnd_class.hInstance = p->hInstance,
+    wnd_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION),
+    wnd_class.hCursor = LoadCursor(nullptr, IDC_ARROW),
+    wnd_class.hbrBackground = HBRUSH(GetStockObject(BLACK_BRUSH)),
+    wnd_class.lpszMenuName = nullptr,
+    wnd_class.lpszClassName = L"com.starbrilliant.danmakuhime",
+    wnd_class.hIconSm = nullptr
     ATOM wnd_class_atom = RegisterClassExW(&wnd_class);
     if(wnd_class_atom == 0) {
         /* Failed to set window class */
         report_error("\xe8\xae\xbe\xe5\xae\x9a\xe7\xaa\x97\xe5\x8f\xa3\xe7\xb1\xbb\xe5\x9e\x8b\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
+
     /* Create window */
     p->hWnd = CreateWindowExW(
         WS_EX_LAYERED,
