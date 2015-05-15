@@ -37,18 +37,18 @@ GDIPresenter::GDIPresenter(Application *app) {
 
     /* Register window class */
     WNDCLASSEXW wnd_class;
-    wnd_class.cbSize = sizeof (WNDCLASSEX),
-    wnd_class.style = CS_HREDRAW | CS_VREDRAW,
-    wnd_class.lpfnWndProc = p->WndProc,
-    wnd_class.cbClsExtra = 0,
-    wnd_class.cbWndExtra = 0,
-    wnd_class.hInstance = p->hInstance,
-    wnd_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION),
-    wnd_class.hCursor = LoadCursor(nullptr, IDC_ARROW),
-    wnd_class.hbrBackground = HBRUSH(GetStockObject(BLACK_BRUSH)),
-    wnd_class.lpszMenuName = nullptr,
-    wnd_class.lpszClassName = L"com.starbrilliant.danmakuhime",
-    wnd_class.hIconSm = nullptr
+    wnd_class.cbSize = sizeof (WNDCLASSEX);
+    wnd_class.style = CS_HREDRAW | CS_VREDRAW;
+    wnd_class.lpfnWndProc = p->WndProc;
+    wnd_class.cbClsExtra = 0;
+    wnd_class.cbWndExtra = 0;
+    wnd_class.hInstance = p->hInstance;
+    wnd_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+    wnd_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wnd_class.hbrBackground = HBRUSH(GetStockObject(BLACK_BRUSH));
+    wnd_class.lpszMenuName = nullptr;
+    wnd_class.lpszClassName = L"com.starbrilliant.danmakuhime";
+    wnd_class.hIconSm = nullptr;
     ATOM wnd_class_atom = RegisterClassExW(&wnd_class);
     if(wnd_class_atom == 0) {
         /* Failed to set window class */
