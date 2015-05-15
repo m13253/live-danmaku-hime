@@ -31,6 +31,8 @@ static inline void unused_arg(T arg) {
     static_cast<void>(arg);
 }
 
+/* Available as a standalone library:
+   https://github.com/m13253/cpp-proxy-ptr */
 template<typename _Tp, typename Allocator = std::allocator<_Tp>>
 class proxy_ptr {
 
@@ -102,7 +104,7 @@ public:
         return *this;
     }
 
-    proxy_ptr &operator=(proxy_ptr &&that) noexcept {
+    proxy_ptr &operator=(proxy_ptr &&that) {
         std::swap(_ptr, that._ptr);
         return *this;
     }
@@ -115,23 +117,23 @@ public:
         *_ptr = std::move(value);
     }
 
-    element_type &operator*() const noexcept {
+    element_type &operator*() const {
         return _ptr;
     }
 
-    pointer operator->() const noexcept {
+    pointer operator->() const {
         return _ptr;
     }
 
-    explicit operator pointer() const noexcept {
+    explicit operator pointer() const {
         return _ptr;
     }
 
-    pointer get() const noexcept {
+    pointer get() const {
         return _ptr;
     }
 
-    void swap(proxy_ptr &that) noexcept {
+    void swap(proxy_ptr &that) {
         std::swap(_ptr, that._ptr);
     }
 
