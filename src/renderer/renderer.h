@@ -20,4 +20,7 @@
 #pragma once
 
 namespace dmhm {
+
+struct BaseRenderer; // Opaque type
+
 }

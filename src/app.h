@@ -18,12 +18,25 @@
 */
 
 #pragma once
-#include "gdi.h"
+#include "utils.h"
 
 namespace dmhm {
 
-struct BasePresenter; // Opaque type
+class Application {
 
-typedef GDIPresenter Presenter;
+public:
+
+    Application();
+    ~Application();
+    int run();
+    struct BaseFetcher *get_fetcher() const;
+    struct BaseRenderer *get_renderer() const;
+    struct BasePresenter *get_presenter() const;
+
+private:
+
+    proxy_ptr<struct ApplicationPrivate> p;
+
+};
 
 }

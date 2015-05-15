@@ -17,13 +17,25 @@
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#pragma once
-#include "gdi.h"
+#include "app.h"
+#include "presenter/presenter.h"
+#include <memory>
 
 namespace dmhm {
 
-struct BasePresenter; // Opaque type
+struct ApplicationPrivate {
+    std::unique_ptr<Presenter> presenter;
+};
 
-typedef GDIPresenter Presenter;
+Application::Application() {
+    p->presenter.reset(new Presenter(this));
+}
+
+Application::~Application() {
+}
+
+int Application::run() {
+    return 0;
+}
 
 }

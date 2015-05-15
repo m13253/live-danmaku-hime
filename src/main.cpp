@@ -18,11 +18,10 @@
 */
 
 #include "utils.h"
-
-using namespace dmhm;
+#include "app.h"
 
 int main(int argc, char *argv[]) {
-    unused_arg(argc);
-    unused_arg(argv);
-    return 0;
+    dmhm::unused_arg(argc);
+    dmhm::unused_arg(argv);
+    return dmhm::Application().run();
 }

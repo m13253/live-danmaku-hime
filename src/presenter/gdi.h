@@ -27,9 +27,9 @@ class GDIPresenter {
 
 public:
 
-    GDIPresenter();
+    GDIPresenter(class Application *app);
     ~GDIPresenter();
-    void ReportError(const std::string error);
+    void report_error(const std::string error);
 
 private:
 
