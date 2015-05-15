@@ -66,7 +66,7 @@ GDIPresenter::GDIPresenter(Application *app) {
         nullptr,
         nullptr,
         p->hInstance,
-        nullptr
+        this
     );
     if(!p->hWnd) {
         /* Failed to create window */
