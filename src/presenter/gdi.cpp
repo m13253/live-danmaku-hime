@@ -91,7 +91,7 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
         SetWindowLongPtrW(hWnd, GWLP_USERDATA, lParam);
     } else
         self = reinterpret_cast<GDIPresenter *>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
-    return 0;
+    return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
 }
