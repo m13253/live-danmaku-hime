@@ -62,7 +62,10 @@ public:
         }
     }
 
-    proxy_ptr(proxy_ptr &&other) = default;
+    proxy_ptr(proxy_ptr &&other) :
+        _ptr(other._ptr) {
+        other._ptr = nullptr;
+    }
 
     proxy_ptr(const element_type &value) :
         _alloc(Allocator()),
@@ -87,8 +90,11 @@ public:
     }
 
     ~proxy_ptr() {
-        _alloc.destroy(_ptr);
-        _ptr = nullptr;
+        if(_ptr) {
+            _alloc.destroy(_ptr);
+            _alloc.deallocate(_ptr, 1);
+            _ptr = nullptr;
+        }
     }
 
     proxy_ptr &operator=(const proxy_ptr &that) {
