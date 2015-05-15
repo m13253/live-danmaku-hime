@@ -18,4 +18,4 @@ SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 # I will simply set -static for static linking, to get around MinGW CRT problem
 # Alternatively, you can use the method here:
 # http://m13253.blogspot.com/2015/01/mingw-w64-libwinpthread-1-dll-issue.html
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -static)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static" CACHE STRING "" FORCE)

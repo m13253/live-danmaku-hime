@@ -25,9 +25,10 @@
 namespace dmhm {
 
 struct GDIPresenterPrivate {
-    Application *app;
-    HINSTANCE hInstance;
-    HWND hWnd;
+    Application *app = nullptr;
+    HINSTANCE hInstance = nullptr;
+    HWND hWnd = nullptr;
+    LRESULT CALLBACK static WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
 GDIPresenter::GDIPresenter(Application *app) {
@@ -37,7 +38,7 @@ GDIPresenter::GDIPresenter(Application *app) {
     WNDCLASSEXW wnd_class = {
         .cbSize = sizeof (WNDCLASSEX),
         .style = CS_HREDRAW | CS_VREDRAW,
-        .lpfnWndProc = nullptr,
+        .lpfnWndProc = p->WndProc,
         .cbClsExtra = 0,
         .cbWndExtra = 0,
         .hInstance = p->hInstance,
@@ -74,10 +75,22 @@ GDIPresenter::GDIPresenter(Application *app) {
 }
 
 GDIPresenter::~GDIPresenter() {
+    if(p->hWnd)
+        DestroyWindow(p->hWnd);
 }
 
 void GDIPresenter::report_error(const std::string error) {
     MessageBoxW(nullptr, utf8_to_wide(error, false).c_str(), nullptr, MB_ICONERROR);
+}
+
+LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    GDIPresenter *self;
+    if(uMsg == WM_CREATE) {
+        self = reinterpret_cast<GDIPresenter *>(lParam);
+        SetWindowLongPtrW(hWnd, GWLP_USERDATA, lParam);
+    } else
+        self = reinterpret_cast<GDIPresenter *>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
+    return 0;
 }
 
 }
