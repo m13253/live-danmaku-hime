@@ -37,7 +37,7 @@ GDIPresenter::GDIPresenter(Application *app) {
 
     /* Register window class */
     WNDCLASSEXW wnd_class;
-    wnd_class.cbSize = sizeof (WNDCLASSEX);
+    wnd_class.cbSize = sizeof (WNDCLASSEXW);
     wnd_class.style = CS_HREDRAW | CS_VREDRAW;
     wnd_class.lpfnWndProc = p->WndProc;
     wnd_class.cbClsExtra = 0;
