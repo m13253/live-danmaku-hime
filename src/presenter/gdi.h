@@ -19,6 +19,7 @@
 
 #pragma once
 #include "../utils.h"
+#include <string>
 
 namespace dmhm {
 
@@ -28,6 +29,7 @@ public:
 
     GDIPresenter();
     ~GDIPresenter();
+    void ReportError(const std::string error);
 
 private:
 
