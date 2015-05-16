@@ -72,7 +72,7 @@ GDIPresenter::GDIPresenter(Application *app) {
 
     /* Create window */
     p->hWnd = CreateWindowExW(
-        WS_EX_LAYERED,
+        WS_EX_LAYERED | WS_EX_TOPMOST,
         reinterpret_cast<LPCWSTR>(wnd_class_atom),
         L"\u5f39\u5e55\u59ec",
         WS_POPUP,
@@ -91,6 +91,8 @@ GDIPresenter::GDIPresenter(Application *app) {
 
     p->get_stage_rect(this);
     p->create_buffer(this);
+
+    ShowWindow(hWnd, SW_SHOW);
 }
 
 GDIPresenter::~GDIPresenter() {
@@ -230,8 +232,6 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
     blend_function.AlphaFormat = AC_SRC_ALPHA;
     UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &dest_pos, 0, &blend_function, ULW_ALPHA);
-
-    ShowWindow(hWnd, SW_SHOW);
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
