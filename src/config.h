@@ -18,25 +18,19 @@
 */
 
 #pragma once
-#include "../utils.h"
+
 #include <cstdint>
-#include <string>
 
 namespace dmhm {
+namespace config{
 
-class GDIPresenter {
+const uint32_t stage_width = 240;
 
-public:
+const uint32_t font_size = 18;
 
-    GDIPresenter(class Application *app);
-    ~GDIPresenter();
-    void report_error(const std::string error);
-    void get_stage_rect(int32_t &top, int32_t &left, int32_t &right, int32_t &bottom);
+const char *font_face = "Source Han Sans SC";
 
-private:
+const char *font_style = "Regular";
 
-    proxy_ptr<struct GDIPresenterPrivate> p;
-
-};
-
+}
 }
