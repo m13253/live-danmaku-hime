@@ -35,6 +35,7 @@ Application::~Application() {
 }
 
 int Application::run() {
+    p->presenter->paint_frame();
     return 0;
 }
 
