@@ -223,12 +223,15 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     SIZE window_size;
     window_size.cx = right-left;
     window_size.cy = bottom-top;
+    POINT buffer_pos;
+    buffer_pos.x = 0;
+    buffer.pos.y = 0;
     BLENDFUNCTION blend_function;
     blend_function.BlendOp = AC_SRC_OVER;
     blend_function.BlendFlags = 0;
     blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
     blend_function.AlphaFormat = AC_SRC_ALPHA;
-    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, nullptr, 0, &blend_function, ULW_ALPHA);
+    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &buffer_pos, 0, &blend_function, ULW_ALPHA);
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
