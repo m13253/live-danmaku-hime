@@ -24,7 +24,7 @@
 namespace dmhm {
 namespace config{
 
-const uint32_t stage_width = 240;
+const uint32_t stage_width = 480;
 
 const uint32_t font_size = 18;
 
