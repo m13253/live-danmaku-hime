@@ -161,7 +161,7 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
         }
     }
     if(!buffer_dc) {
-        buffer_dc = CreateCompatibleDC(nullptr);
+        buffer_dc = CreateCompatibleDC(GetDC(nullptr));
         if(!buffer_dc) {
             /* Failed to create buffer */
             pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
@@ -196,8 +196,8 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
 
     BITMAPINFO bitmap_info;
     bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
-    bitmap_info.bmiHeader.biWidth = width;
-    bitmap_info.bmiHeader.biHeight = height;
+    bitmap_info.bmiHeader.biWidth = width+1;   // Experiments show that +1 is necessary
+    bitmap_info.bmiHeader.biHeight = height+1;
     bitmap_info.bmiHeader.biPlanes = 1;
     bitmap_info.bmiHeader.biBitCount = 32;
     bitmap_info.bmiHeader.biCompression = BI_RGB;
