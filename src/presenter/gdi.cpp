@@ -194,13 +194,13 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
 void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t width, uint32_t height) {
     for(uint32_t i = 0; i < height/2; i++)
         for(uint32_t j = 0; j < width; j++)
-            std::swap(bitmap[i*width + j], bitmap[(height-i)*width + j]); // TODO: optimize
+            std::swap(bitmap[i*width + j], bitmap[(height-1-i)*width + j]); // TODO: optimize
     for(uint32_t i = 0; i < width * height; i++) {
-        uint8_t alpha = bitmap[i] >> 24;
-        uint8_t red = (bitmap[i] >> 16) * alpha / 255;
-        uint8_t green = (bitmap[i] >> 8) * alpha / 255;
-        uint8_t blue = bitmap[i] * alpha / 255;
-        bitmap[i] = (alpha << 24) | (red << 16) | (green << 8) | blue;
+        uint8_t alpha = uint8_t(bitmap[i] >> 24);
+        uint8_t red = uint8_t((bitmap[i] >> 16) * alpha / 255);
+        uint8_t green = uint8_t((bitmap[i] >> 8) * alpha / 255);
+        uint8_t blue = uint8_t(bitmap[i] * alpha / 255);
+        bitmap[i] = (uint32_t(alpha) << 24) | (uint32_t(red) << 16) | (uint32_t(green) << 8) | uint32_t(blue);
     }
 
     BITMAPINFO bitmap_info;
@@ -223,15 +223,12 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     SIZE window_size;
     window_size.cx = right-left;
     window_size.cy = bottom-top;
-    POINT dest_pos;
-    dest_pos.x = 0;
-    dest_pos.y = 0;
     BLENDFUNCTION blend_function;
     blend_function.BlendOp = AC_SRC_OVER;
     blend_function.BlendFlags = 0;
     blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
     blend_function.AlphaFormat = AC_SRC_ALPHA;
-    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &dest_pos, 0, &blend_function, ULW_ALPHA);
+    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, nullptr, 0, &blend_function, ULW_ALPHA);
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
