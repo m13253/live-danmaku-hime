@@ -92,7 +92,7 @@ GDIPresenter::GDIPresenter(Application *app) {
     p->get_stage_rect(this);
     p->create_buffer(this);
 
-    ShowWindow(hWnd, SW_SHOW);
+    ShowWindow(p->hWnd, SW_SHOW);
 }
 
 GDIPresenter::~GDIPresenter() {
@@ -123,7 +123,7 @@ void GDIPresenter::paint_frame() {
 
     for(size_t i = 0; i < height; i++)
         for(size_t j = 0; j < width; j++)
-            bitmap_buffer[i*width + j] = i*256+j;
+            bitmap_buffer[i*width + j] = (i << 24) | (j << 16) | ((i+j) << 8) | 128;
 
     p->do_paint(this, bitmap_buffer.data(), width, height);
 }
