@@ -203,6 +203,8 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
         bitmap[i] = (uint32_t(alpha) << 24) | (uint32_t(red) << 16) | (uint32_t(green) << 8) | uint32_t(blue);
     }
 
+    SelectObject(buffer_dc, buffer_bmp);
+
     BITMAPINFO bitmap_info;
     bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
     bitmap_info.bmiHeader.biWidth = width;
@@ -215,9 +217,7 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     bitmap_info.bmiHeader.biYPelsPerMeter = 96;
     bitmap_info.bmiHeader.biClrUsed = 0;
     bitmap_info.bmiHeader.biClrImportant = 0;
-    SetDIBits(buffer_dc, buffer_bmp, 0, height, bitmap, &bitmap_info, 0);
-
-    SelectObject(buffer_dc, buffer_bmp);
+    SetDIBitsToDevice(buffer_dc, 0, 0, width, height, 0, 0, 0, height, bitmap, &bitmap_info, 0);
 
     POINT window_pos;
     window_pos.x = left;
