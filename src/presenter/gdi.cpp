@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <map>
+#include <vector>
 #include <windows.h>
 
 namespace dmhm {
@@ -36,8 +37,10 @@ struct GDIPresenterPrivate {
     HDC window_dc = nullptr;
     HDC buffer_dc = nullptr;
     HBITMAP buffer_bmp = nullptr;
+    int32_t top; int32_t left; int32_t right; int32_t bottom;
+    void get_stage_rect(GDIPresenter *pub);
     void create_buffer(GDIPresenter *pub);
-    void do_paint(GDIPresenter *pub, uint32_t *bitmap, int32_t width, int32_t height);
+    void do_paint(GDIPresenter *pub, uint32_t *bitmap, uint32_t width, uint32_t height);
 };
 
 GDIPresenter::GDIPresenter(Application *app) {
@@ -86,6 +89,7 @@ GDIPresenter::GDIPresenter(Application *app) {
     }
     p->hWndMap[p->hWnd] = this;
 
+    p->get_stage_rect(this);
     p->create_buffer(this);
 }
 
@@ -104,18 +108,36 @@ void GDIPresenter::report_error(const std::string error) {
     MessageBoxW(nullptr, utf8_to_wide(error, false).c_str(), nullptr, MB_ICONERROR);
 }
 
-void GDIPresenter::get_stage_rect(int32_t &top, int32_t &left, int32_t &right, int32_t &bottom) {
-    HMONITOR monitor = MonitorFromWindow(p->hWnd, MONITOR_DEFAULTTOPRIMARY);
+void GDIPresenter::get_stage_size(uint32_t &width, uint32_t &height) {
+    assert(p->right >= p->left && p->bottom >= p->top);
+    width = p->right - p->left;
+    height = p->bottom - p->top;
+}
+
+void GDIPresenter::paint_frame() {
+    uint32_t width, height;
+    get_stage_size(width, height);
+    std::vector<uint32_t> bitmap_buffer(width * height);
+
+    for(size_t i = 0; i < height; i++)
+        for(size_t j = 0; j < width; j++)
+            bitmap_buffer[i*width + j] = i*256+j;
+
+    p->do_paint(this, bitmap_buffer.data(), width, height);
+}
+
+void GDIPresenterPrivate::get_stage_rect(GDIPresenter *pub) {
+    HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
     if(!monitor) {
         /* Failed to retrieve screen size */
-        report_error("\xe8\x8e\xb7\xe5\x8f\x96\xe5\xb1\x8f\xe5\xb9\x95\xe5\xb0\xba\xe5\xaf\xb8\xe5\xa4\xb1\xe8\xb4\xa5");
+        pub->report_error("\xe8\x8e\xb7\xe5\x8f\x96\xe5\xb1\x8f\xe5\xb9\x95\xe5\xb0\xba\xe5\xaf\xb8\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
     MONITORINFO monitor_info;
     monitor_info.cbSize = sizeof monitor_info;
     if(!GetMonitorInfoW(monitor, &monitor_info)) {
         /* Failed to retrieve screen size */
-        report_error("\xe8\x8e\xb7\xe5\x8f\x96\xe5\xb1\x8f\xe5\xb9\x95\xe5\xb0\xba\xe5\xaf\xb8\xe5\xa4\xb1\xe8\xb4\xa5");
+        pub->report_error("\xe8\x8e\xb7\xe5\x8f\x96\xe5\xb1\x8f\xe5\xb9\x95\xe5\xb0\xba\xe5\xaf\xb8\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
     top = monitor_info.rcWork.top;
@@ -125,19 +147,47 @@ void GDIPresenter::get_stage_rect(int32_t &top, int32_t &left, int32_t &right, i
 }
 
 void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
-    if(!window_dc)
+    if(!window_dc) {
         window_dc = GetDC(hWnd);
-    if(!buffer_dc)
+        if(!window_dc) {
+            /* Failed to create buffer */
+            pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
+            abort();
+        }
+    }
+    if(!buffer_dc) {
         buffer_dc = CreateCompatibleDC(window_dc);
+        if(!buffer_dc) {
+            /* Failed to create buffer */
+            pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
+            abort();
+        }
+    }
 
-    int32_t top, left, right, bottom;
-    pub->get_stage_rect(top, left, right, bottom);
+    uint32_t width, height;
+    pub->get_stage_size(width, height);
     if(buffer_bmp)
         DeleteObject(buffer_bmp);
-    buffer_bmp = CreateCompatibleBitmap(buffer_dc, right-left, bottom-top);
+    buffer_bmp = CreateCompatibleBitmap(buffer_dc, width, height);
+    if(!buffer_bmp) {
+        /* Failed to create buffer */
+        pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
+        abort();
+    }
 }
 
-void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, int32_t width, int32_t height) {
+void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t width, uint32_t height) {
+    for(uint32_t i = 0; i < height/2; i++)
+        for(uint32_t j = 0; j < width; j++)
+            std::swap(bitmap[i*width + j], bitmap[(height-i)*width + j]); // TODO: optimize
+    for(uint32_t i = 0; i < width * height; i++) {
+        uint8_t alpha = bitmap[i] >> 24;
+        uint8_t red = (bitmap[i] >> 16) * alpha / 255;
+        uint8_t green = (bitmap[i] >> 8) * alpha / 255;
+        uint8_t blue = bitmap[i] * alpha / 255;
+        bitmap[i] = (alpha << 24) | (red << 16) | (green << 8) | blue;
+    }
+
     BITMAPINFO bitmap_info;
     bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
     bitmap_info.bmiHeader.biWidth = width;
@@ -150,8 +200,23 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, int32_t wid
     bitmap_info.bmiHeader.biYPelsPerMeter = 96;
     bitmap_info.bmiHeader.biClrUsed = 0;
     bitmap_info.bmiHeader.biClrImportant = 0;
-
     SetDIBits(buffer_dc, buffer_bmp, 0, height, bitmap, &bitmap_info, 0);
+
+    POINT window_pos;
+    window_pos.x = left;
+    window_pos.y = top;
+    SIZE window_size;
+    window_size.cx = right-left;
+    window_size.cy = bottom-top;
+    POINT dest_pos;
+    dest_pos.x = 0;
+    dest_pos.y = 0;
+    BLENDFUNCTION blend_function;
+    blend_function.BlendOp = AC_SRC_OVER;
+    blend_function.BlendFlags = 0;
+    blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
+    blend_function.AlphaFormat = AC_SRC_ALPHA;
+    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &dest_pos, 0, &blend_function, ULW_ALPHA);
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

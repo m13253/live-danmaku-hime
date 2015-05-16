@@ -31,7 +31,8 @@ public:
     GDIPresenter(class Application *app);
     ~GDIPresenter();
     void report_error(const std::string error);
-    void get_stage_rect(int32_t &top, int32_t &left, int32_t &right, int32_t &bottom);
+    void get_stage_size(uint32_t &width, uint32_t &height);
+    void paint_frame();
 
 private:
 
