@@ -171,7 +171,7 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
         }
     }
     if(!buffer_dc) {
-        buffer_dc = CreateCompatibleDC(window_dc);
+        buffer_dc = CreateCompatibleDC(nullptr);
         if(!buffer_dc) {
             /* Failed to create buffer */
             pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
