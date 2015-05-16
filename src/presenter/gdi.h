@@ -33,6 +33,7 @@ public:
     void report_error(const std::string error);
     void get_stage_size(uint32_t &width, uint32_t &height);
     void paint_frame();
+    int run_loop();
 
 private:
 

@@ -126,6 +126,19 @@ void GDIPresenter::paint_frame() {
     p->do_paint(this, bitmap_buffer.data(), width, height);
 }
 
+int GDIPresenter::run_loop() {
+    for(;;) {
+        paint_frame();
+        MSG message;
+        if(PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+            if(message.message == WM_QUIT)
+                return 0;
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
+
 void GDIPresenterPrivate::get_stage_rect(GDIPresenter *pub) {
     HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
     if(!monitor) {
@@ -217,9 +230,15 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
     blend_function.AlphaFormat = AC_SRC_ALPHA;
     UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &dest_pos, 0, &blend_function, ULW_ALPHA);
+
+    ShowWindow(hWnd, SW_SHOW);
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if(uMsg == WM_DESTROY) {
+        PostQuitMessage(0);
+        return 0;
+    }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
