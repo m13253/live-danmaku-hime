@@ -189,6 +189,7 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
         pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
+    SelectObject(buffer_dc, buffer_bmp);
 }
 
 void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t width, uint32_t height) {
@@ -202,8 +203,6 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
         uint8_t blue = uint8_t(bitmap[i] * alpha / 255);
         bitmap[i] = (uint32_t(alpha) << 24) | (uint32_t(red) << 16) | (uint32_t(green) << 8) | uint32_t(blue);
     }
-
-    SelectObject(buffer_dc, buffer_bmp);
 
     BITMAPINFO bitmap_info;
     bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
