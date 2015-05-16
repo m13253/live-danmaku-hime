@@ -71,7 +71,7 @@ GDIPresenter::GDIPresenter(Application *app) {
     }
 
     /* Create window */
-    p->hWnd = CreateWindowExW(
+    /* p->hWnd = */ CreateWindowExW(
         WS_EX_LAYERED | WS_EX_TOPMOST,
         reinterpret_cast<LPCWSTR>(wnd_class_atom),
         L"\u5f39\u5e55\u59ec",
@@ -80,19 +80,13 @@ GDIPresenter::GDIPresenter(Application *app) {
         nullptr,
         nullptr,
         p->hInstance,
-        nullptr
+        this
     );
-    if(!p->hWnd) {
+    if(!p->hWnd) { /* hWnd should be filled in WndProc */
         /* Failed to create window */
         report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xaa\x97\xe5\x8f\xa3\xe5\xa4\xb1\xe8\xb4\xa5");
         abort();
     }
-    p->hWndMap[p->hWnd] = this;
-
-    p->get_stage_rect(this);
-    p->create_buffer(this);
-
-    ShowWindow(p->hWnd, SW_SHOW);
 }
 
 GDIPresenter::~GDIPresenter() {
@@ -129,16 +123,12 @@ void GDIPresenter::paint_frame() {
 }
 
 int GDIPresenter::run_loop() {
-    for(;;) {
-        paint_frame();
-        MSG message;
-        if(PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
-            if(message.message == WM_QUIT)
-                return 0;
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
+    MSG message;
+    while(GetMessageW(&message, nullptr, 0, 0)) {
+        TranslateMessage(&message);
+        DispatchMessageW(&message);
     }
+    return 0;
 }
 
 void GDIPresenterPrivate::get_stage_rect(GDIPresenter *pub) {
@@ -236,9 +226,23 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if(uMsg == WM_DESTROY) {
-        PostQuitMessage(0);
-        return 0;
+    if (uMsg == WM_NCCREATE) {
+        GDIPresenter *pub = reinterpret_cast<GDIPresenter *>(reinterpret_cast<CREATESTRUCTW *>(lParam)->lpCreateParams);
+        hWndMap[hWnd] = pub;
+        pub->p->hWnd = hWnd;
+    } else {
+        GDIPresenter *pub = hWndMap[hWnd];
+        switch(uMsg) {
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+        case WM_CREATE:
+            pub->p->get_stage_rect(pub);
+            pub->p->create_buffer(pub);
+            ShowWindow(hWnd, SW_SHOW);
+            pub->paint_frame();
+            break;
+        }
     }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }

@@ -38,6 +38,7 @@ public:
 private:
 
     proxy_ptr<struct GDIPresenterPrivate> p;
+    friend struct GDIPresenterPrivate;
 
 };
 
