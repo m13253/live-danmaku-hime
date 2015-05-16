@@ -34,13 +34,15 @@ struct GDIPresenterPrivate {
     Application *app = nullptr;
     HINSTANCE hInstance = nullptr;
     HWND hWnd = nullptr;
+    HDC screen_dc = nullptr;
     HDC window_dc = nullptr;
     HDC buffer_dc = nullptr;
-    HBITMAP buffer_bmp = nullptr;
+    HBITMAP dib_handle = nullptr;
+    uint32_t *dib_buffer = nullptr;
     int32_t top; int32_t left; int32_t right; int32_t bottom;
     void get_stage_rect(GDIPresenter *pub);
     void create_buffer(GDIPresenter *pub);
-    void do_paint(GDIPresenter *pub, uint32_t *bitmap, uint32_t width, uint32_t height);
+    void do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height);
 };
 
 GDIPresenter::GDIPresenter(Application *app) {
@@ -75,7 +77,7 @@ GDIPresenter::GDIPresenter(Application *app) {
         WS_EX_LAYERED | WS_EX_TOPMOST,
         reinterpret_cast<LPCWSTR>(wnd_class_atom),
         L"\u5f39\u5e55\u59ec",
-        WS_OVERLAPPEDWINDOW,
+        WS_POPUP,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr,
         nullptr,
@@ -90,14 +92,18 @@ GDIPresenter::GDIPresenter(Application *app) {
 }
 
 GDIPresenter::~GDIPresenter() {
+    p->hWndMap.erase(p->hWndMap.find(p->hWnd));
     if(p->hWnd)
         DestroyWindow(p->hWnd);
+    if(p->screen_dc)
+        ReleaseDC(nullptr, p->screen_dc);
     if(p->window_dc)
         ReleaseDC(p->hWnd, p->window_dc);
     if(p->buffer_dc)
         DeleteDC(p->buffer_dc);
-    if(p->buffer_bmp)
-        DeleteObject(p->buffer_bmp);
+    if(p->dib_handle) {
+        DeleteObject(p->dib_handle);
+    }
 }
 
 void GDIPresenter::report_error(const std::string error) {
@@ -116,8 +122,22 @@ void GDIPresenter::paint_frame() {
     std::vector<uint32_t> bitmap_buffer(width * height);
 
     for(size_t i = 0; i < height; i++)
-        for(size_t j = 0; j < width; j++)
-            bitmap_buffer[i*width + j] = (i << 24) | (j << 16) | ((i+j) << 8) | 128;
+        for(size_t j = 0; j < width; j++) {
+            switch((i & 1) | (j & 1) << 1) {
+            case 0:
+                bitmap_buffer[i*width + j] = 0xffffffff;
+                break;
+            case 1:
+                bitmap_buffer[i*width + j] = 0x00000000;
+                break;
+            case 2:
+                bitmap_buffer[i*width + j] = 0xff000000;
+                break;
+            case 3:
+                bitmap_buffer[i*width + j] = 0x8066ccff;
+                break;
+            }
+        }
 
     p->do_paint(this, bitmap_buffer.data(), width, height);
 }
@@ -152,6 +172,14 @@ void GDIPresenterPrivate::get_stage_rect(GDIPresenter *pub) {
 }
 
 void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
+    if(!screen_dc) {
+        screen_dc = GetDC(nullptr);
+        if(!screen_dc) {
+            /* Failed to create buffer */
+            pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
+            abort();
+        }
+    }
     if(!window_dc) {
         window_dc = GetDC(hWnd);
         if(!window_dc) {
@@ -161,52 +189,51 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
         }
     }
     if(!buffer_dc) {
-        buffer_dc = CreateCompatibleDC(GetDC(nullptr));
+        buffer_dc = CreateCompatibleDC(screen_dc);
         if(!buffer_dc) {
             /* Failed to create buffer */
             pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
             abort();
         }
     }
+    if(!dib_handle) {
+        uint32_t width, height;
+        pub->get_stage_size(width, height);
 
-    uint32_t width, height;
-    pub->get_stage_size(width, height);
-    if(buffer_bmp)
-        DeleteObject(buffer_bmp);
-    buffer_bmp = CreateCompatibleBitmap(buffer_dc, width, height);
-    if(!buffer_bmp) {
-        /* Failed to create buffer */
-        pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
-        abort();
+        dib_buffer = nullptr;
+
+        BITMAPINFO bitmap_info;
+        bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
+        bitmap_info.bmiHeader.biWidth = width;
+        bitmap_info.bmiHeader.biHeight = height;
+        bitmap_info.bmiHeader.biPlanes = 1;
+        bitmap_info.bmiHeader.biBitCount = 32;
+        bitmap_info.bmiHeader.biCompression = BI_RGB;
+        bitmap_info.bmiHeader.biSizeImage = 0;
+        bitmap_info.bmiHeader.biXPelsPerMeter = 96;
+        bitmap_info.bmiHeader.biYPelsPerMeter = 96;
+        bitmap_info.bmiHeader.biClrUsed = 0;
+        bitmap_info.bmiHeader.biClrImportant = 0;
+
+        dib_handle = CreateDIBSection(screen_dc, &bitmap_info, DIB_RGB_COLORS, reinterpret_cast<void **>(&dib_buffer), nullptr, 0);
+        if(!dib_handle) {
+            /* Failed to create buffer */
+            pub->report_error("\xe5\x88\x9b\xe5\xbb\xba\xe7\xbc\x93\xe5\x86\xb2\xe5\x8c\xba\xe5\xa4\xb1\xe8\xb4\xa5");
+            abort();
+        }
     }
-    SelectObject(buffer_dc, buffer_bmp);
+    SelectObject(buffer_dc, dib_handle);
 }
 
-void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t width, uint32_t height) {
-    for(uint32_t i = 0; i < height/2; i++)
-        for(uint32_t j = 0; j < width; j++)
-            std::swap(bitmap[i*width + j], bitmap[(height-1-i)*width + j]); // TODO: optimize
-    for(uint32_t i = 0; i < width * height; i++) {
-        uint8_t alpha = uint8_t(bitmap[i] >> 24);
-        uint8_t red = uint8_t((bitmap[i] >> 16) * alpha / 255);
-        uint8_t green = uint8_t((bitmap[i] >> 8) * alpha / 255);
-        uint8_t blue = uint8_t(bitmap[i] * alpha / 255);
-        bitmap[i] = (uint32_t(alpha) << 24) | (uint32_t(red) << 16) | (uint32_t(green) << 8) | uint32_t(blue);
-    }
-
-    BITMAPINFO bitmap_info;
-    bitmap_info.bmiHeader.biSize = sizeof bitmap_info.bmiHeader;
-    bitmap_info.bmiHeader.biWidth = width+1;   // Experiments show that +1 is necessary
-    bitmap_info.bmiHeader.biHeight = height+1;
-    bitmap_info.bmiHeader.biPlanes = 1;
-    bitmap_info.bmiHeader.biBitCount = 32;
-    bitmap_info.bmiHeader.biCompression = BI_RGB;
-    bitmap_info.bmiHeader.biSizeImage = 0;
-    bitmap_info.bmiHeader.biXPelsPerMeter = 96;
-    bitmap_info.bmiHeader.biYPelsPerMeter = 96;
-    bitmap_info.bmiHeader.biClrUsed = 0;
-    bitmap_info.bmiHeader.biClrImportant = 0;
-    SetDIBitsToDevice(buffer_dc, 0, 0, width, height, 0, 0, 0, height, bitmap, &bitmap_info, 0);
+void GDIPresenterPrivate::do_paint(GDIPresenter *, const uint32_t *bitmap, uint32_t width, uint32_t height) {
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++) {
+            uint8_t alpha = uint8_t(bitmap[i*width + j] >> 24);
+            uint32_t red = ((bitmap[i*width + j] & 0xff0000) * alpha / 255) & 0xff0000;
+            uint32_t green = ((bitmap[i*width + j] & 0xff00) * alpha / 255) & 0xff00;
+            uint32_t blue = ((bitmap[i*width + j] & 0xff) * alpha / 255) & 0xff;
+            dib_buffer[(height-i-1)*width + j] = (uint32_t(alpha) << 24) | red | green | blue;
+        }
 
     POINT window_pos;
     window_pos.x = left;
