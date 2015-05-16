@@ -217,6 +217,8 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     bitmap_info.bmiHeader.biClrImportant = 0;
     SetDIBits(buffer_dc, buffer_bmp, 0, height, bitmap, &bitmap_info, 0);
 
+    SelectObject(buffer_dc, buffer_bmp);
+
     POINT window_pos;
     window_pos.x = left;
     window_pos.y = top;
@@ -225,7 +227,7 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, uint32_t *bitmap, uint32_t wi
     window_size.cy = bottom-top;
     POINT buffer_pos;
     buffer_pos.x = 0;
-    buffer.pos.y = 0;
+    buffer_pos.y = 0;
     BLENDFUNCTION blend_function;
     blend_function.BlendOp = AC_SRC_OVER;
     blend_function.BlendFlags = 0;
