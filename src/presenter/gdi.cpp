@@ -253,7 +253,7 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, const uint32_t *bitmap, uint3
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (uMsg == WM_NCCREATE) {
+    if(uMsg == WM_NCCREATE) {
         GDIPresenter *pub = reinterpret_cast<GDIPresenter *>(reinterpret_cast<CREATESTRUCTW *>(lParam)->lpCreateParams);
         hWndMap[hWnd] = pub;
         pub->p->hWnd = hWnd;
