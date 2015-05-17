@@ -225,7 +225,7 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
     SelectObject(buffer_dc, dib_handle);
 }
 
-void GDIPresenterPrivate::do_paint(GDIPresenter *, const uint32_t *bitmap, uint32_t width, uint32_t height) {
+void GDIPresenterPrivate::do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height) {
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++) {
             uint8_t alpha = uint8_t(bitmap[i*width + j] >> 24);
@@ -249,7 +249,11 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *, const uint32_t *bitmap, uint3
     blend_function.BlendFlags = 0;
     blend_function.SourceConstantAlpha = 255; // Set the SourceConstantAlpha value to 255 (opaque) when you only want to use per-pixel alpha values.
     blend_function.AlphaFormat = AC_SRC_ALPHA;
-    UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &buffer_pos, 0, &blend_function, ULW_ALPHA);
+    if(!UpdateLayeredWindow(hWnd, window_dc, &window_pos, &window_size, buffer_dc, &buffer_pos, 0, &blend_function, ULW_ALPHA)) {
+        /* Desktop compositor failed to set window transparency */
+        pub->report_error("\xe6\xa1\x8c\xe9\x9d\xa2\xe6\xb7\xb7\xe6\x88\x90\xe5\x99\xa8\xe6\x97\xa0\xe6\xb3\x95\xe8\xae\xbe\xe7\xbd\xae\xe9\x80\x8f\xe6\x98\x8e\xe7\xaa\x97\xe5\x8f\xa3");
+        abort();
+    }
 }
 
 LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -267,8 +271,13 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
             pub->p->get_stage_rect(pub);
             pub->p->create_buffer(pub);
             ShowWindow(hWnd, SW_SHOW);
-            pub->paint_frame();
+            if(!SetTimer(hWnd, 0, 16, nullptr)) {
+                pub->report_error("\xe5\x90\xaf\xe5\x8a\xa8\xe5\x8a\xa8\xe7\x94\xbb\xe5\xae\x9a\xe6\x97\xb6\xe5\x99\xa8\xe5\xa4\xb1\xe8\xb4\xa5");
+                abort();
+            }
             break;
+        case WM_TIMER:
+            pub->paint_frame();
         }
     }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
