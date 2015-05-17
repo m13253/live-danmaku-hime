@@ -57,7 +57,7 @@ lib/libcairo.a: src/cairo.tar.xz flag lib/libpng.a
 	mkdir -p build/cairo
 	tar xJf $< -C build/cairo
 
-lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/z.a lib/libbz2.a lib/libpng.a
+lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/libz.a lib/libbz2.a lib/libpng.a
 	rm -rfv build/freetype
 	mkdir -p build/freetype
 	tar xjf $< -C build/freetype
