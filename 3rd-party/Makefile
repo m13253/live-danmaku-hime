@@ -52,8 +52,10 @@ lib/libcairo.a: src/cairo.tar.xz flag lib/libpixman-1.a lib/libpng.a lib/libfree
 	rm -rfv build/cairo
 	mkdir -p build/cairo
 	tar xJf $< -C build/cairo
-	(cd build/cairo/cairo-* && LIB="-lharfbuzz" ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
-	$(MAKE) -C build/cairo/cairo-* V=1
+	rm -f lib/libthin_bundle.a
+	$(AR) crsT lib/libthin_bundle.a lib/*.a
+	(cd build/cairo/cairo-* && LIBS="-lthin_bundle -lusp10" ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
+	$(MAKE) -C build/cairo/cairo-* LIBS="-lthin_bundle -lusp10" V=1
 	$(MAKE) -C build/cairo/cairo-* install
 
 lib/libpixman-1.a: src/pixman.tar.gz flag lib/libpng.a
@@ -77,7 +79,7 @@ lib/libharfbuzz.a: src/harfbuzz.tar.bz2 flag lib/libfreetype.a.1pass
 	rm -rfv build/harfbuzz
 	mkdir -p build/harfbuzz
 	tar xjf $< -C build/harfbuzz
-	(cd build/harfbuzz/harfbuzz-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --without-glib --without-gobject --without-cairo --without-icu --without-graphite2 --with-uniscribe --with-freetype)
+	(cd build/harfbuzz/harfbuzz-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --without-glib --without-gobject --without-cairo --without-icu --without-graphite2 --without-uniscribe --with-freetype)
 	$(MAKE) -C build/harfbuzz/harfbuzz-*
 	$(MAKE) -C build/harfbuzz/harfbuzz-* install
 
