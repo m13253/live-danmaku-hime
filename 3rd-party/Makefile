@@ -6,14 +6,15 @@ CC:=$(HOSTARCH)-gcc
 CXX:=$(HOSTARCH)-g++
 NM:=$(HOSTARCH)-gcc-nm
 RANLIB:=$(HOSTARCH)-gcc-ranlib
-WGET:=wget -c --no-use-server-timestamps
-override CFLAGS:=$(CFLAGS) -I$(PWD)/include -L$(PWD)/lib -O2
-override CXXFLAGS:=$(CXXFLAGS) -I$(PWD)/include -L$(PWD)/lib -O2
-override CPPFLAGS:=$(CPPFLAGS) -I$(PWD)/include
-override LDFLAGS:=$(LDFLAGS) -L$(PWD)/lib
-MAKEFLAGS:=-j$(shell nproc || echo 1)
+RC:=$(HOSTARCH)-windres
+STRIP:=$(HOSTARCH)-strip
+override startdir:=$(PWD)
+export CFLAGS:=$(CFLAGS) -I$(startdir)/include -L$(startdir)/lib -O2
+export CXXFLAGS:=$(CXXFLAGS) -I$(startdir)/include -L$(startdir)/lib -O2
+export CPPFLAGS:=$(CPPFLAGS) -I$(startdir)/include
+export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib
 
-all: lib/libbz2.a
+all: lib/libpng.a
 
 clean:
 	rm -rfv flag build lib include
@@ -22,34 +23,80 @@ distclean:
 	rm -rfv flag src build lib include
 
 flag:
-	mkdir -p src build lib include
+	mkdir -p build lib include
 	touch flag
 
-src/pango.tar.xz: flag
-	$(WGET) -O $@ http://ftp.gnome.org/pub/GNOME/sources/pango/1.36/pango-1.36.8.tar.xz
+src/pango.tar.xz:
+	./stable_fetch $@ http://ftp.gnome.org/pub/GNOME/sources/pango/1.36/pango-1.36.8.tar.xz
 
-src/cairo.tar.xz: flag
-	$(WGET) -O $@ http://cairographics.org/releases/cairo-1.14.2.tar.xz
+src/cairo.tar.xz:
+	./stable_fetch $@ http://cairographics.org/releases/cairo-1.14.2.tar.xz
 
-src/harfbuzz.tar.bz2: flag
-	$(WGET) -O $@ http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-0.9.40.tar.bz2
+src/harfbuzz.tar.bz2:
+	./stable_fetch $@ http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-0.9.40.tar.bz2
 
-src/freetype2.tar.bz2: flag
-	$(WGET) -O $@ http://download.savannah.gnu.org/releases/freetype/freetype-2.5.5.tar.bz2
+src/freetype.tar.bz2:
+	./stable_fetch $@ http://download.savannah.gnu.org/releases/freetype/freetype-2.5.5.tar.bz2
 
-src/libpng.tar.xz: flag
-	$(WGET) -O $@ http://download.sourceforge.net/libpng/libpng-1.6.17.tar.xz
+src/libpng.tar.xz:
+	./stable_fetch $@ http://download.sourceforge.net/libpng/libpng-1.6.17.tar.xz -U Wget/1
 
-src/zlib.tar.xz: flag
-	$(WGET) -O $@ http://zlib.net/zlib-1.2.8.tar.xz
+src/zlib.tar.xz:
+	./stable_fetch $@ http://zlib.net/zlib-1.2.8.tar.xz
 
-src/bzip2.tar.gz: flag
-	$(WGET) -O $@ http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz
+src/bzip2.tar.gz:
+	./stable_fetch $@ http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz
 
-lib/libpango.a: src/pango.tar.xz flag lib/libcairo.a
+lib/libpango.a: src/pango.tar.xz flag lib/libcairo.a lib/libharfbuzz.a lib/libfreetype.a.2pass
 	rm -rfv build/pango
 	mkdir -p build/pango
-	tar -C build/pango
+	tar xJf $< -C build/pango
+
+lib/libcairo.a: src/cairo.tar.xz flag lib/libpng.a
+	rm -rfv build/cairo
+	mkdir -p build/cairo
+	tar xJf $< -C build/cairo
+
+lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/z.a lib/libbz2.a lib/libpng.a
+	rm -rfv build/freetype
+	mkdir -p build/freetype
+	tar xjf $< -C build/freetype
+	(cd build/freetype/freetype-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --with-harfbuzz)
+	$(MAKE) -C build/freetype/freetype-*
+	$(MAKE) -C build/freetype/freetype-* install
+	touch $@
+
+lib/libharfbuzz.a: src/harfbuzz.tar.bz2 flag lib/libfreetype.a
+	rm -rfv build/harfbuzz
+	mkdir -p build/harfbuzz
+	tar xjf $< -C build/harfbuzz
+	(cd build/harfbuzz/harfbuzz-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --without-glib --without-gobject --without-cairo --without-icu --without-graphite2 --with-freetype --with-uniscribe --without-coretext)
+	$(MAKE) -C build/harfbuzz/harfbuzz-*
+	$(MAKE) -C build/harfbuzz/harfbuzz-* install
+
+lib/libfreetype.a: src/freetype.tar.bz2 flag lib/libz.a lib/libbz2.a lib/libpng.a
+	rm -rfv build/freetype
+	mkdir -p build/freetype
+	tar xjf $< -C build/freetype
+	(cd build/freetype/freetype-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --without-harfbuzz)
+	$(MAKE) -C build/freetype/freetype-*
+	$(MAKE) -C build/freetype/freetype-* install
+
+lib/libpng.a: src/libpng.tar.xz flag lib/libz.a
+	rm -rfv build/libpng
+	mkdir -p build/libpng
+	tar xJf $< -C build/libpng
+	(cd build/libpng/libpng-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static)
+	$(MAKE) -C build/libpng/libpng-*
+	$(MAKE) -C build/libpng/libpng-* install
+
+
+lib/libz.a: src/zlib.tar.xz flag
+	rm -rfv build/zlib
+	mkdir -p build/zlib
+	tar xJf $< -C build/zlib
+	$(MAKE) -C build/zlib/zlib-* -f win32/Makefile.gcc SHARED_MODE=0 prefix="$(startdir)" DESTDIR="$(startdir)" LIBRARY_PATH="/lib" INCLUDE_PATH="/include" AR="$(AR)" CC="$(CC)" RC="$(RC)" STRIP="$(STRIP)"
+	$(MAKE) -C build/zlib/zlib-* -f win32/Makefile.gcc install SHARED_MODE=0 prefix="$(startdir)" DESTDIR="$(startdir)" LIBRARY_PATH="/lib" INCLUDE_PATH="/include" AR="$(AR)" CC="$(CC)" RC="$(RC)" STRIP="$(STRIP)"
 
 lib/libbz2.a: src/bzip2.tar.gz flag
 	rm -rfv build/bzip2

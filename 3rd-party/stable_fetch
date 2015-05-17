@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+    echo 'Invaild arguments.' >&2
+    exit 1
+elif [ ! -e "$1" ]
+then
+    mkdir -p "$(dirname "$1")"/
+    wget -U 'Wget/1.0' -O "$1".part "$2" &&
+    mv "$1".part "$1"
+fi
