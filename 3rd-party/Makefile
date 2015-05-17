@@ -54,8 +54,8 @@ lib/libcairo.a: src/cairo.tar.xz flag lib/libpixman-1.a lib/libpng.a lib/libfree
 	tar xJf $< -C build/cairo
 	rm -f lib/libthin_bundle.a
 	$(AR) crsT lib/libthin_bundle.a lib/*.a
-	(cd build/cairo/cairo-* && LIBS="-lthin_bundle -lusp10" ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
-	$(MAKE) -C build/cairo/cairo-* LIBS="-lthin_bundle -lusp10" V=1
+	(cd build/cairo/cairo-* && LIBS="-lthin_bundle -lpthread -lwinpthread -lpthread" ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
+	$(MAKE) -C build/cairo/cairo-* LIBS="-lthin_bundle -lpthread -lwinpthread -lpthread" V=1
 	$(MAKE) -C build/cairo/cairo-* install
 
 lib/libpixman-1.a: src/pixman.tar.gz flag lib/libpng.a
