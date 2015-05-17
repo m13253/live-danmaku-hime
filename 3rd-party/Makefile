@@ -15,7 +15,7 @@ export CPPFLAGS:=$(CPPFLAGS) -I$(startdir)/include
 export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib -L.
 export PKG_CONFIG_PATH:=$(startdir)/lib/pkgconfig
 
-all: lib/libcairo.a lib/libharfbuzz.a lib/libfreetype.a.2pass
+all: lib/libcairomm.a lib/libharfbuzz.a lib/libfreetype.a.2pass
 
 clean:
 	rm -rfv flag build lib include
@@ -29,6 +29,9 @@ flag:
 
 src/cairo.tar.xz:
 	./stable_fetch $@ http://cairographics.org/releases/cairo-1.14.2.tar.xz
+
+src/cairomm.tar.gz:
+	./stable_fetch $@ http://cairographics.org/releases/cairomm-1.11.2.tar.gz
 
 src/pixman.tar.gz:
 	./stable_fetch $@ http://cairographics.org/releases/pixman-0.32.6.tar.gz
@@ -55,8 +58,16 @@ lib/libcairo.a: src/cairo.tar.xz flag lib/libpixman-1.a lib/libpng.a lib/libfree
 	rm -f lib/libthin_bundle.a
 	$(AR) crsT lib/libthin_bundle.a lib/*.a
 	(cd build/cairo/cairo-* && LIBS="-lthin_bundle -lwinpthread" ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
-	$(MAKE) -C build/cairo/cairo-* LIBS="-lthin_bundle -lwinpthread" V=1
+	$(MAKE) -C build/cairo/cairo-* LIBS="-lthin_bundle -lwinpthread"
 	$(MAKE) -C build/cairo/cairo-* install
+
+lib/libcairomm.a: src/cairomm.tar.gz flag lib/libcairo.a
+	rm -rfv build/cairomm
+	mkdir -p build/cairomm
+	tar xzf $< -C build/cairomm
+	(cd build/cairomm/cairomm-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --enable-shared --enable-static)
+	$(MAKE) -C build/cairomm/cairomm-*
+	$(MAKE) -C build/cairomm/cairomm-* install
 
 lib/libpixman-1.a: src/pixman.tar.gz flag lib/libpng.a
 	rm -rfv build/pixman
