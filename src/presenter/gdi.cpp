@@ -278,6 +278,7 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
             break;
         case WM_TIMER:
             pub->paint_frame();
+            break;
         }
     }
     return DefWindowProcW(hWnd, uMsg, wParam, lParam);
