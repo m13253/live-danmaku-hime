@@ -79,7 +79,7 @@ lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/libz.a 
 	(cd build/freetype/freetype-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --with-harfbuzz)
 	$(MAKE) -C build/freetype/freetype-*
 	$(MAKE) -C build/freetype/freetype-* install
-	sed -i -e 's/Libs:\(.*\)$/Libs:\1 -lharfbuzz/' lib/pkgconfig/freetype2.pc
+	sed -i -e 's/Libs:\(.*\)$$/Libs:\1 -lharfbuzz/' lib/pkgconfig/freetype2.pc
 	touch $@
 
 lib/libharfbuzz.a: src/harfbuzz.tar.bz2 flag lib/libfreetype.a.1pass
