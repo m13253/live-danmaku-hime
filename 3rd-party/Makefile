@@ -12,7 +12,8 @@ override startdir:=$(PWD)
 export CFLAGS:=$(CFLAGS) -I$(startdir)/include -L$(startdir)/lib -O2
 export CXXFLAGS:=$(CXXFLAGS) -I$(startdir)/include -L$(startdir)/lib -O2
 export CPPFLAGS:=$(CPPFLAGS) -I$(startdir)/include
-export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib
+export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib -L.
+export PKG_CONFIG_PATH:=$(startdir)/lib/pkgconfig
 
 all: lib/libpng.a
 
@@ -31,6 +32,9 @@ src/pango.tar.xz:
 
 src/cairo.tar.xz:
 	./stable_fetch $@ http://cairographics.org/releases/cairo-1.14.2.tar.xz
+
+src/pixman.tar.gz:
+	./stable_fetch $@ http://cairographics.org/releases/pixman-0.32.6.tar.gz
 
 src/harfbuzz.tar.bz2:
 	./stable_fetch $@ http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-0.9.40.tar.bz2
@@ -52,10 +56,21 @@ lib/libpango.a: src/pango.tar.xz flag lib/libcairo.a lib/libharfbuzz.a lib/libfr
 	mkdir -p build/pango
 	tar xJf $< -C build/pango
 
-lib/libcairo.a: src/cairo.tar.xz flag lib/libpng.a
+lib/libcairo.a: src/cairo.tar.xz flag lib/libpixman.a lib/libpng.a lib/libfreetype.a.2pass
 	rm -rfv build/cairo
 	mkdir -p build/cairo
 	tar xJf $< -C build/cairo
+	(cd build/cairo/cairo-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --disable-xlib --disable-xlib-xrender --disable-xcb --disable-xcb-shm --disable-quartz --disable-quartz-font --disable-win32 --disable-win32-font --disable-egl --disable-glx --disable-wgl --enable-ft --disable-fc --disable-ps --disable-pdf --disable-svg)
+	$(MAKE) -C build/cairo/cairo-*
+	$(MAKE) -C build/cairo/cairo-* install
+
+lib/libpixman.a: src/pixman.tar.gz flag lib/libpng.a
+	rm -rfv build/pixman
+	mkdir -p build/pixman
+	tar xzf $< -C build/pixman
+	(cd build/pixman/pixman-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --enable-libpng)
+	$(MAKE) -C build/pixman/pixman-*
+	$(MAKE) -C build/pixman/pixman-* install
 
 lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/libz.a lib/libbz2.a lib/libpng.a
 	rm -rfv build/freetype
@@ -64,23 +79,25 @@ lib/libfreetype.a.2pass: src/freetype.tar.bz2 flag lib/libharfbuzz.a lib/libz.a 
 	(cd build/freetype/freetype-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --with-harfbuzz)
 	$(MAKE) -C build/freetype/freetype-*
 	$(MAKE) -C build/freetype/freetype-* install
+	sed -i -e 's/Libs:\(.*\)$/Libs:\1 -lharfbuzz/' lib/pkgconfig/freetype2.pc
 	touch $@
 
-lib/libharfbuzz.a: src/harfbuzz.tar.bz2 flag lib/libfreetype.a
+lib/libharfbuzz.a: src/harfbuzz.tar.bz2 flag lib/libfreetype.a.1pass
 	rm -rfv build/harfbuzz
 	mkdir -p build/harfbuzz
 	tar xjf $< -C build/harfbuzz
-	(cd build/harfbuzz/harfbuzz-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --without-glib --without-gobject --without-cairo --without-icu --without-graphite2 --with-freetype --with-uniscribe --without-coretext)
+	(cd build/harfbuzz/harfbuzz-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --without-glib --without-gobject --without-cairo --without-icu --without-graphite2 --with-freetype)
 	$(MAKE) -C build/harfbuzz/harfbuzz-*
 	$(MAKE) -C build/harfbuzz/harfbuzz-* install
 
-lib/libfreetype.a: src/freetype.tar.bz2 flag lib/libz.a lib/libbz2.a lib/libpng.a
+lib/libfreetype.a.1pass: src/freetype.tar.bz2 flag lib/libz.a lib/libbz2.a lib/libpng.a
 	rm -rfv build/freetype
 	mkdir -p build/freetype
 	tar xjf $< -C build/freetype
 	(cd build/freetype/freetype-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --without-harfbuzz)
 	$(MAKE) -C build/freetype/freetype-*
 	$(MAKE) -C build/freetype/freetype-* install
+	touch $@
 
 lib/libpng.a: src/libpng.tar.xz flag lib/libz.a
 	rm -rfv build/libpng
