@@ -18,6 +18,7 @@
 */
 
 #include "app.h"
+#include "renderer/renderer.h"
 #include "presenter/presenter.h"
 #include <memory>
 
@@ -28,10 +29,24 @@ struct ApplicationPrivate {
 };
 
 Application::Application() {
+    p->renderer.reset(new Renderer(this));
     p->presenter.reset(new Presenter(this));
 }
 
 Application::~Application() {
+}
+
+struct BaseFetcher *get_fetcher() const {
+//    return reinterpret_cast<struct BaseFetcher *>(fetcher->get());
+    return nullptr;
+}
+
+struct BaseRenderer *get_renderer() const {
+    return reinterpret_cast<struct BaseRenderer *>(render->get());
+}
+
+struct BasePresenter *get_presenter() const {
+    return reinterpret_cast<struct BasePresenter *>(presenter->get());
 }
 
 int Application::run() {

@@ -19,9 +19,22 @@
 
 #pragma once
 
+#include "../utils.h"
+#include "../app.h"
+
 namespace dmhm {
 
 class CairoRenderer {
+
+public:
+
+    CairoRenderer(Application *app);
+    ~CairoRenderer();
+
+private:
+
+    proxy_ptr<struct CairoRendererPrivate> p;
+
 };
 
 }

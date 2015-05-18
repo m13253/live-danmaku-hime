@@ -18,7 +18,9 @@
 */
 
 #include "gdi.h"
+#include "../utils.h"
 #include "../app.h"
+#include "../renderer/renderer.h"
 #include "../config.h"
 #include <cassert>
 #include <cstdlib>
@@ -42,7 +44,7 @@ struct GDIPresenterPrivate {
     int32_t top; int32_t left; int32_t right; int32_t bottom;
     void get_stage_rect(GDIPresenter *pub);
     void create_buffer(GDIPresenter *pub);
-    void do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height);
+    void do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height, uint32_t stride);
 };
 
 GDIPresenter::GDIPresenter(Application *app) {
@@ -119,27 +121,12 @@ void GDIPresenter::get_stage_size(uint32_t &width, uint32_t &height) {
 void GDIPresenter::paint_frame() {
     uint32_t width, height;
     get_stage_size(width, height);
-    std::vector<uint32_t> bitmap_buffer(width * height);
 
-    for(size_t i = 0; i < height; i++)
-        for(size_t j = 0; j < width; j++) {
-            switch((i & 1) | (j & 1) << 1) {
-            case 0:
-                bitmap_buffer[i*width + j] = 0xffffffff;
-                break;
-            case 1:
-                bitmap_buffer[i*width + j] = 0x00000000;
-                break;
-            case 2:
-                bitmap_buffer[i*width + j] = 0xff000000;
-                break;
-            case 3:
-                bitmap_buffer[i*width + j] = 0x8066ccff;
-                break;
-            }
-        }
-
-    p->do_paint(this, bitmap_buffer.data(), width, height);
+    Renderer *renderer = reinterpret_cast<Renderer *>(p->app->get_renderer());
+    assert(renderer);
+    renderer->paint_frame(width, height, [=](const uint32_t *bitmap, uint32_t stride) {
+        p->do_paint(this, bitmap, width, height, stride);
+    });
 }
 
 int GDIPresenter::run_loop() {
@@ -225,14 +212,17 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
     SelectObject(buffer_dc, dib_handle);
 }
 
-void GDIPresenterPrivate::do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height) {
+void GDIPresenterPrivate::do_paint(GDIPresenter *pub, const uint32_t *bitmap, uint32_t width, uint32_t height, uint32_t stride) {
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++) {
+            /*
             uint8_t alpha = uint8_t(bitmap[i*width + j] >> 24);
             uint32_t red = ((bitmap[i*width + j] & 0xff0000) * alpha / 255) & 0xff0000;
             uint32_t green = ((bitmap[i*width + j] & 0xff00) * alpha / 255) & 0xff00;
             uint32_t blue = ((bitmap[i*width + j] & 0xff) * alpha / 255) & 0xff;
             dib_buffer[(height-i-1)*width + j] = (uint32_t(alpha) << 24) | red | green | blue;
+            */
+            dib_buffer[(height-i-1)*width + j] = bitmap[i*stride + j];
         }
 
     POINT window_pos;
