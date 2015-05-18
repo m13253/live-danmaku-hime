@@ -25,6 +25,7 @@
 namespace dmhm {
 
 struct ApplicationPrivate {
+    std::unique_ptr<Renderer> renderer;
     std::unique_ptr<Presenter> presenter;
 };
 
@@ -36,17 +37,17 @@ Application::Application() {
 Application::~Application() {
 }
 
-struct BaseFetcher *get_fetcher() const {
-//    return reinterpret_cast<struct BaseFetcher *>(fetcher->get());
+struct BaseFetcher *Application::get_fetcher() const {
+//    return reinterpret_cast<struct BaseFetcher *>(p->fetcher.get());
     return nullptr;
 }
 
-struct BaseRenderer *get_renderer() const {
-    return reinterpret_cast<struct BaseRenderer *>(render->get());
+struct BaseRenderer *Application::get_renderer() const {
+    return reinterpret_cast<struct BaseRenderer *>(p->renderer.get());
 }
 
-struct BasePresenter *get_presenter() const {
-    return reinterpret_cast<struct BasePresenter *>(presenter->get());
+struct BasePresenter *Application::get_presenter() const {
+    return reinterpret_cast<struct BasePresenter *>(p->presenter.get());
 }
 
 int Application::run() {
