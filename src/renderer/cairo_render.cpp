@@ -67,8 +67,10 @@ void CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     if(!p->cairo_instance)
         p->cairo_instance = cairo_create(p->cairo_surface);
 
+    const double pi = 3.14159265358979323846;
+    cairo_set_source_rgba(p->cairo_instance, 1, 0.2, 0.2, 0.5);;
     cairo_set_line_width(p->cairo_instance, 10.0);
-    cairo_arc(p->cairo_instance, 80, 80, 32, 0, 3.14159265358979323846);
+    cairo_arc(p->cairo_instance, 80, 80, 32, pi/2, -pi/2);
     cairo_stroke(p->cairo_instance);
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));

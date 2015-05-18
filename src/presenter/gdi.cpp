@@ -226,10 +226,10 @@ void GDIPresenterPrivate::do_paint(GDIPresenter *pub, const uint32_t *bitmap, ui
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++) {
             /*
-            uint8_t alpha = uint8_t(bitmap[i*width + j] >> 24);
-            uint32_t red = ((bitmap[i*width + j] & 0xff0000) * alpha / 255) & 0xff0000;
-            uint32_t green = ((bitmap[i*width + j] & 0xff00) * alpha / 255) & 0xff00;
-            uint32_t blue = ((bitmap[i*width + j] & 0xff) * alpha / 255) & 0xff;
+            uint8_t alpha = uint8_t(bitmap[i*stride + j] >> 24);
+            uint32_t red = ((bitmap[i*stride + j] & 0xff0000) * alpha / 255) & 0xff0000;
+            uint32_t green = ((bitmap[i*stride + j] & 0xff00) * alpha / 255) & 0xff00;
+            uint32_t blue = ((bitmap[i*stride + j] & 0xff) * alpha / 255) & 0xff;
             dib_buffer[(height-i-1)*width + j] = (uint32_t(alpha) << 24) | red | green | blue;
             */
             dib_buffer[(height-i-1)*width + j] = bitmap[i*stride + j];
