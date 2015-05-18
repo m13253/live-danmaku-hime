@@ -17,14 +17,4 @@
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#pragma once
 
-#include "cairo_render.h"
-
-namespace dmhm {
-
-struct BaseRenderer; // Opaque type
-
-typedef CairoRenderer Renderer;
-
-}

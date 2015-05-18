@@ -19,12 +19,9 @@
 
 #pragma once
 
-#include "cairo_render.h"
-
 namespace dmhm {
 
-struct BaseRenderer; // Opaque type
-
-typedef CairoRenderer Renderer;
+class CairoRenderer {
+};
 
 }
