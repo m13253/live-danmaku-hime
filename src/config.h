@@ -28,9 +28,9 @@ const uint32_t stage_width = 480;
 
 const uint32_t font_size = 18;
 
-const char *font_face = "Source Han Sans SC";
+const char *const font_face = "Source Han Sans SC";
 
-const char *font_style = "Regular";
+const char *const font_style = "Regular";
 
 }
 }

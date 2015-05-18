@@ -95,16 +95,26 @@ GDIPresenter::GDIPresenter(Application *app) {
 
 GDIPresenter::~GDIPresenter() {
     p->hWndMap.erase(p->hWndMap.find(p->hWnd));
-    if(p->hWnd)
+    if(p->hWnd) {
         DestroyWindow(p->hWnd);
-    if(p->screen_dc)
+        p->hWnd = nullptr;
+    }
+    if(p->screen_dc) {
         ReleaseDC(nullptr, p->screen_dc);
-    if(p->window_dc)
+        p->screen_dc = nullptr;
+    }
+    if(p->window_dc) {
         ReleaseDC(p->hWnd, p->window_dc);
-    if(p->buffer_dc)
+        p->window_dc = nullptr;
+    }
+    if(p->buffer_dc) {
         DeleteDC(p->buffer_dc);
+        p->buffer_dc = nullptr;
+    }
     if(p->dib_handle) {
         DeleteObject(p->dib_handle);
+        p->dib_handle = nullptr;
+        p->dib_buffer = nullptr;
     }
 }
 

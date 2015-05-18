@@ -15,7 +15,7 @@ export CPPFLAGS:=$(CPPFLAGS) -I$(startdir)/include
 export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib -L.
 export PKG_CONFIG_PATH:=$(startdir)/lib/pkgconfig
 
-all: lib/libcairomm.a lib/libharfbuzz.a lib/libfreetype.a.2pass
+all: lib/libcairo.a lib/libharfbuzz.a lib/libfreetype.a.2pass
 
 clean:
 	rm -rfv flag build lib include

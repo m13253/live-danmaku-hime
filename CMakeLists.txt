@@ -16,6 +16,12 @@ aux_source_directory(src/renderer SRC_RENDERER)
 aux_source_directory(src/presenter SRC_PRESENTER)
 add_executable(live_danmaku_hime ${SRC_MAIN} ${SRC_FETCHER} ${SRC_RENDERER} ${SRC_PRESENTER})
 
+if(WIN32)
+    target_include_directories(live_danmaku_hime PRIVATE "3rd-party/include")
+    link_directories("3rd-party/lib")
+    target_link_libraries(live_danmaku_hime PUBLIC "cairo" "thin_bundle" "winpthread")
+endif()
+
 set_target_properties(live_danmaku_hime PROPERTIES
     CXX_STANDARD 11
     POSITION_INDEPENDENT_CODE ON

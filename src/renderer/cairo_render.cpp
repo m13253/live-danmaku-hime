@@ -39,35 +39,39 @@ CairoRenderer::CairoRenderer(Application *app) {
 }
 
 CairoRenderer::~CairoRenderer() {
-    if(cairo_instance)
-        cairo_destroy(cairo_instance);
-    if(cairo_surface)
-        cairo_surface_destroy(cairo_surface);
+    if(p->cairo_instance) {
+        cairo_destroy(p->cairo_instance);
+        p->cairo_instance = nullptr;
+    }
+    if(p->cairo_surface) {
+        cairo_surface_destroy(p->cairo_surface);
+        p->cairo_surface = nullptr;
+    }
 }
 
-CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback) {
+void CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback) {
     if(width != p->width || height != p->height) {
         p->width = width;
         p->height = height;
-        if(cairo_instance) {
-            cairo_destroy(cairo_instance);
-            cairo_instance = nullptr;
+        if(p->cairo_instance) {
+            cairo_destroy(p->cairo_instance);
+            p->cairo_instance = nullptr;
         }
-        if(cairo_surface) {
-            cairo_surface_destroy(cairo_surface);
-            cairo_surface_destroy = nullptr;
+        if(p->cairo_surface) {
+            cairo_surface_destroy(p->cairo_surface);
+            p->cairo_surface = nullptr;
         }
     }
-    if(!cairo_surface)
-        cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-    if(!cairo_instance)
-        cairo_instance = cairo_create(cairo_surface);
+    if(!p->cairo_surface)
+        p->cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+    if(!p->cairo_instance)
+        p->cairo_instance = cairo_create(p->cairo_surface);
 
-    cairo_set_line_width(cairo_instance, 10.0);
-    cairo_arc(cairo_instance, 80, 80, 32, 0, 3.14159265358979323846);
-    cairo_stroke(cairo_instance);
+    cairo_set_line_width(p->cairo_instance, 10.0);
+    cairo_arc(p->cairo_instance, 80, 80, 32, 0, 3.14159265358979323846);
+    cairo_stroke(p->cairo_instance);
 
-    callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data()), uint32_t(cairo_image_surface_get_stride/sizeof (uint32_t)));
+    callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
 }
 
 }
