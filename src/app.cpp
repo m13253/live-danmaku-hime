@@ -18,6 +18,7 @@
 */
 
 #include "app.h"
+#include "fetcher/fetcher.h"
 #include "renderer/renderer.h"
 #include "presenter/presenter.h"
 #include <memory>
@@ -25,11 +26,13 @@
 namespace dmhm {
 
 struct ApplicationPrivate {
+    std::unique_ptr<Fetcher> fetcher;
     std::unique_ptr<Renderer> renderer;
     std::unique_ptr<Presenter> presenter;
 };
 
 Application::Application() {
+    p->fetcher.reset(new Fetcher(this));
     p->renderer.reset(new Renderer(this));
     p->presenter.reset(new Presenter(this));
 }
@@ -38,7 +41,7 @@ Application::~Application() {
 }
 
 struct BaseFetcher *Application::get_fetcher() const {
-//    return reinterpret_cast<struct BaseFetcher *>(p->fetcher.get());
+    return reinterpret_cast<struct BaseFetcher *>(p->fetcher.get());
     return nullptr;
 }
 
@@ -51,6 +54,7 @@ struct BasePresenter *Application::get_presenter() const {
 }
 
 int Application::run() {
+    p->fetcher->run_thread();
     return p->presenter->run_loop();
 }
 

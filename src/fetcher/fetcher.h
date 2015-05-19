@@ -19,8 +19,12 @@
 
 #pragma once
 
+#include "console.h"
+
 namespace dmhm {
 
 struct BaseFetcher; // Opaque type
+
+typedef ConsoleFetcher Fetcher;
 
 }
