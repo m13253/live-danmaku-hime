@@ -74,12 +74,15 @@ void CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     cairo_restore(p->cairo_instance);
 
     static uint32_t counter = 0;
-    if(counter == 0) counter = height;
+    if(counter == 0) counter = height+48;
     cairo_set_source_rgba(p->cairo_instance, 0.4, 0.8, 1.0, 0.6);
     cairo_select_font_face(p->cairo_instance, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(p->cairo_instance, 48);
     cairo_move_to(p->cairo_instance, 80, counter--);
     cairo_show_text(p->cairo_instance, "Lorem ipsum dolor sit amet.");
+    cairo_select_font_face(p->cairo_instance, "Microsoft Yahei UI", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_move_to(p->cairo_instance, 80, counter-48);
+    cairo_show_text(p->cairo_instance, "\xe5\xa4\xa9\xe5\x9c\xb0\xe7\x8e\x84\xe9\xbb\x84\xef\xbc\x8c\xe5\xae\x87\xe5\xae\x99\xe6\xb4\xaa\xe8\x8d\x92\xe3\x80\x82");
     cairo_stroke(p->cairo_instance);
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));

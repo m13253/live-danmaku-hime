@@ -207,8 +207,8 @@ void GDIPresenterPrivate::create_buffer(GDIPresenter *pub) {
         bitmap_info.bmiHeader.biBitCount = 32;
         bitmap_info.bmiHeader.biCompression = BI_RGB;
         bitmap_info.bmiHeader.biSizeImage = 0;
-        bitmap_info.bmiHeader.biXPelsPerMeter = 96;
-        bitmap_info.bmiHeader.biYPelsPerMeter = 96;
+        bitmap_info.bmiHeader.biXPelsPerMeter = 3780;
+        bitmap_info.bmiHeader.biYPelsPerMeter = 3780;
         bitmap_info.bmiHeader.biClrUsed = 0;
         bitmap_info.bmiHeader.biClrImportant = 0;
 
