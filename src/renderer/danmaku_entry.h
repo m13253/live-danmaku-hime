@@ -25,23 +25,14 @@
 
 namespace dmhm {
 
-class DanmakuEntry {
-
-public:
+struct DanmakuEntry {
 
     DanmakuEntry(const std::string &message);
-    ~DanmakuEntry();
     DanmakuEntry(const DanmakuEntry &other);
     DanmakuEntry(DanmakuEntry &&other);
-    
-    DanmakuEntry &set_message(const std::string &message);
-    std::string get_message() const;
 
-    std::chrono::steady_clock::time_point get_timestamp() const;
-
-private:
-
-    proxy_ptr<struct DanmakuEntryPrivate> p;
+    std::string message;
+    std::chrono::steady_clock::time_point timestamp;
 
 };
 

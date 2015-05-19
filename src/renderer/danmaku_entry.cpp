@@ -25,38 +25,19 @@
 
 namespace dmhm {
 
-struct DanmakuEntryPrivate {
-    std::chrono::steady_clock::time_point timestamp;
-    std::string message;
-};
-
-DanmakuEntry::DanmakuEntry(const std::string &message) {
-    p->timestamp = std::chrono::steady_clock::now();
-    p->message = std::move(message);
-}
-
-DanmakuEntry::~DanmakuEntry() {
+DanmakuEntry::DanmakuEntry(const std::string &message) :
+    message(std::move(message)),
+    timestamp(std::chrono::steady_clock::now()) {
 }
 
 DanmakuEntry::DanmakuEntry(const DanmakuEntry &other) :
-    p(other.p) {
+    message(other.message),
+    timestamp(other.timestamp) {
 }
 
-DanmakuEntry::DanmakuEntry(DanmakuEntry &&other) :
-    p(std::move(other.p)) {
-}
-
-DanmakuEntry &DanmakuEntry::set_message(const std::string &message) {
-    p->message = std::move(message);
-    return *this;
-}
-
-std::string DanmakuEntry::get_message() const {
-    return p->message;
-}
-
-std::chrono::steady_clock::time_point DanmakuEntry::get_timestamp() const {
-    return p->timestamp;
+DanmakuEntry::DanmakuEntry(DanmakuEntry &&other) {
+    std::swap(message, other.message);
+    std::swap(timestamp, other.timestamp);
 }
 
 }
