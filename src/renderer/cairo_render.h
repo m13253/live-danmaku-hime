@@ -31,7 +31,7 @@ public:
 
     CairoRenderer(Application *app);
     ~CairoRenderer();
-    void paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback);
+    bool paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback);
 
 private:
 

@@ -17,7 +17,7 @@ aux_source_directory(src/presenter SRC_PRESENTER)
 add_executable(live_danmaku_hime ${SRC_MAIN} ${SRC_FETCHER} ${SRC_RENDERER} ${SRC_PRESENTER})
 
 if(WIN32)
-    target_include_directories(live_danmaku_hime PRIVATE "3rd-party/include")
+    target_include_directories(live_danmaku_hime PRIVATE "3rd-party/include" "3rd-party/include/freetype2")
     find_library(LIB_CAIRO cairo "3rd-party/lib")
     find_library(LIB_THIN_BUNDLE thin_bundle "3rd-party/lib")
     target_link_libraries(live_danmaku_hime PUBLIC "${LIB_CAIRO}" "${LIB_THIN_BUNDLE}" "winpthread")

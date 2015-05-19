@@ -21,71 +21,149 @@
 #include "../utils.h"
 #include "../app.h"
 #include "../config.h"
+#include "../fetcher/fetcher.h"
+#include <cassert>
+#include <chrono>
 #include <functional>
 #include <list>
 #include <cairo/cairo.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace dmhm {
 
+struct DanmakuAnimator;
+
 struct CairoRendererPrivate {
     Application *app = nullptr;
-    cairo_surface_t *cairo_surface = nullptr;
-    cairo_t *cairo_instance = nullptr;
+
+    /* Stage size */
     uint32_t width = 0;
     uint32_t height = 0;
+
+    FT_Library freetype = nullptr;
+    FT_Face ft_font_face = nullptr;
+
+    cairo_surface_t *cairo_surface = nullptr;
+    cairo_t *cairo_instance = nullptr;
+
+    bool is_eof = false;
+    std::list<DanmakuAnimator> danmaku_list;
+
+    void create_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
+    static void release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
+    void paint_text();
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
     p->app = app;
+
+    /* Initialize FreeType */
+    FT_Error ft_error;
+    ft_error = FT_Init_FreeType(&p->freetype);
+    assert(ft_error == 0);
+    ft_error = FT_New_Face(p->freetype, dmhm::config::font_file, dmhm::config::font_file_index, &p->ft_font_face);
+    assert(ft_error != FT_Err_Unknown_File_Format);
+    assert(ft_error == 0);
+    ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(dmhm::config::font_size*64), 72, 72);
+    assert(ft_error == 0);
 }
 
 CairoRenderer::~CairoRenderer() {
-    if(p->cairo_instance) {
-        cairo_destroy(p->cairo_instance);
-        p->cairo_instance = nullptr;
+    p->release_cairo(p->cairo_surface, p->cairo_instance);
+
+    FT_Error ft_error;
+    if(p->ft_font_face) {
+        ft_error = FT_Done_Face(p->ft_font_face);
+        assert(ft_error == 0);
+        p->ft_font_face = nullptr;
     }
-    if(p->cairo_surface) {
-        cairo_surface_destroy(p->cairo_surface);
-        p->cairo_surface = nullptr;
+    if(p->freetype) {
+        ft_error = FT_Done_FreeType(p->freetype);
+        assert(ft_error == 0);
+        p->freetype = nullptr;
     }
 }
 
-void CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback) {
+bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<void (const uint32_t *bitmap, uint32_t stride)> callback) {
     if(width != p->width || height != p->height) {
         p->width = width;
         p->height = height;
-        if(p->cairo_instance) {
-            cairo_destroy(p->cairo_instance);
-            p->cairo_instance = nullptr;
-        }
-        if(p->cairo_surface) {
-            cairo_surface_destroy(p->cairo_surface);
-            p->cairo_surface = nullptr;
-        }
+        p->release_cairo(p->cairo_surface, p->cairo_instance);
     }
-    if(!p->cairo_surface)
-        p->cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     if(!p->cairo_instance)
-        p->cairo_instance = cairo_create(p->cairo_surface);
+        p->create_cairo(p->cairo_surface, p->cairo_instance);
 
     cairo_save(p->cairo_instance);
     cairo_set_operator(p->cairo_instance, CAIRO_OPERATOR_CLEAR);
     cairo_paint(p->cairo_instance);
     cairo_restore(p->cairo_instance);
 
-    static uint32_t counter = 0;
-    if(counter == 0) counter = height+48;
-    cairo_set_source_rgba(p->cairo_instance, 0.4, 0.8, 1.0, 0.6);
-    cairo_select_font_face(p->cairo_instance, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(p->cairo_instance, 48);
-    cairo_move_to(p->cairo_instance, 80, counter--);
-    cairo_show_text(p->cairo_instance, "Lorem ipsum dolor sit amet.");
-    cairo_select_font_face(p->cairo_instance, "Microsoft Yahei UI", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_move_to(p->cairo_instance, 80, counter-48);
-    cairo_show_text(p->cairo_instance, "\xe5\xa4\xa9\xe5\x9c\xb0\xe7\x8e\x84\xe9\xbb\x84\xef\xbc\x8c\xe5\xae\x87\xe5\xae\x99\xe6\xb4\xaa\xe8\x8d\x92\xe3\x80\x82");
-    cairo_stroke(p->cairo_instance);
+    p->fetch_danmaku();
+    p->animate_text();
+    p->paint_text();
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
+
+    return !p->is_eof() || !p->danmaku_list.empty();
+}
+
+void CairoRendererPrivate::create_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo) {
+    cairo_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+    cairo = cairo_create(cairo_surface);
+}
+
+static void CairoRendererPrivate::release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo) {
+    if(cairo) {
+        cairo_destroy(cairo);
+        cairo = nullptr;
+    }
+    if(cairo_surface) {
+        cairo_surface_destroy(cairo_surface);
+        cairo_surface = nullptr;
+    }
+}
+
+struct DanmakuAnimator {
+    DanmakuEntry entry;
+    uint32_t x;
+    uint32_t y;
+    uint32_t height;
+    double alpha = 1;
+    bool moving = false;
+    uint32_t desty;
+    std::chrono::steady_clock::time_point desttime;
+};
+
+void CairoRendererPrivate::fetch_danmaku() {
+    Fetcher *fetcher = app->get_fetcher();
+    assert(fetcher);
+
+    is_eof = fetcher->is_eof();
+    fetcher->pop_messages([&](DanmakuEntry &entry) {
+        DanmakuAnimator animator;
+        animator.entry = std::move(entry);
+        animator.y = height;
+        danmaku_list.push_front(std::move(animator));
+    });
+}
+
+void CairoRendererPrivate::animate_text() {
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    danmaku_list.remove_if([=](const DanmakuAnimator &x) -> bool {
+        return x.entry.timestamp-now >= dmhm::config::danmaku_lifetime;
+    });
+    for(DanmakuAnimator &i : danmaku_list) {
+        if(i.entry.timestamp-now >= danmaku_attack) {
+            x = dmhm::config::font_size;
+            alpha = 1;
+        }
+        // TODO
+    }
+}
+
+void CairoRendererPrivate::paint_text() {
+    // TODO
 }
 
 }
