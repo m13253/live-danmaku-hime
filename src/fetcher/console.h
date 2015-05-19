@@ -21,6 +21,8 @@
 
 #include "../utils.h"
 #include "../app.h"
+#include "../renderer/danmaku_entry.h"
+#include <functional>
 
 namespace dmhm {
 
@@ -31,6 +33,8 @@ public:
     ConsoleFetcher(Application *app);
     ~ConsoleFetcher();
     void run_thread();
+    bool is_eof();
+    void pop_messages(std::function<void (DanmakuEntry &entry)> callback);
 
 private:
 

@@ -18,7 +18,6 @@
 */
 
 #include "danmaku_entry.h"
-#include "../config.h"
 #include "../utils.h"
 #include <chrono>
 #include <string>

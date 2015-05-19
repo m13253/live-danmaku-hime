@@ -20,7 +20,12 @@
 #include "console.h"
 #include "../utils.h"
 #include "../app.h"
+#include "../renderer/danmaku_entry.h"
+#include <atomic>
+#include <functional>
 #include <iostream>
+#include <list>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -29,6 +34,9 @@ namespace dmhm {
 struct ConsoleFetcherPrivate {
     Application *app = nullptr;
     std::thread thread;
+    std::atomic<bool> is_eof = {false};
+    std::mutex mutex;
+    std::list<DanmakuEntry> message_queue;
     void do_run(ConsoleFetcher *pub);
 };
 
@@ -45,11 +53,25 @@ void ConsoleFetcher::run_thread() {
     });
 }
 
+bool ConsoleFetcher::is_eof() {
+    return p->is_eof;
+}
+
+void ConsoleFetcher::pop_messages(std::function<void (DanmakuEntry &entry)> callback) {
+    std::unique_lock<std::mutex> lock(p->mutex);
+    while(!p->message_queue.empty()) {
+        callback(p->message_queue.front());
+        p->message_queue.pop_front();
+    }
+}
+
 void ConsoleFetcherPrivate::do_run(ConsoleFetcher *pub) {
     std::string input_buffer;
     while(std::getline(std::cin, input_buffer)) {
-        std::cout << input_buffer << std::endl;
+        std::unique_lock<std::mutex> lock(mutex);
+        message_queue.push_back(DanmakuEntry(input_buffer));
     }
+    is_eof = true;
 }
 
 }
