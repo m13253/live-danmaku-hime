@@ -76,7 +76,7 @@ GDIPresenter::GDIPresenter(Application *app) {
 
     /* Create window */
     /* p->hWnd = */ CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TOPMOST,
+        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
         reinterpret_cast<LPCWSTR>(wnd_class_atom),
         L"\u5f39\u5e55\u59ec",
         WS_POPUP,
