@@ -20,8 +20,10 @@
 #include "utils.h"
 #include "app.h"
 
+#include <cstdlib>
+
 int main(int argc, char *argv[]) {
     dmhm::unused_arg(argc);
     dmhm::unused_arg(argv);
-    return dmhm::Application().run();
+    exit(dmhm::Application().run());
 }
