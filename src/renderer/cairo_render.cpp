@@ -27,8 +27,8 @@
 #include <functional>
 #include <list>
 #include <cairo/cairo.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <cairo/cairo-ft.h>
+#include "freetype_includer.h"
 
 namespace dmhm {
 
@@ -43,6 +43,7 @@ struct CairoRendererPrivate {
 
     FT_Library freetype = nullptr;
     FT_Face ft_font_face = nullptr;
+    cairo_font_face_t *cairo_font_face = nullptr;
 
     cairo_surface_t *cairo_surface = nullptr;
     cairo_t *cairo_instance = nullptr;
@@ -52,29 +53,34 @@ struct CairoRendererPrivate {
 
     void create_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
     static void release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
-    void fetch_danmaku();
-    void animate_text();
+    void fetch_danmaku(std::chrono::steady_clock::time_point now);
+    void animate_text(std::chrono::steady_clock::time_point now);
     void paint_text();
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
     p->app = app;
 
-    /* Initialize FreeType */
+    /* Initialize fonts */
     FT_Error ft_error;
     ft_error = FT_Init_FreeType(&p->freetype);
     assert(ft_error == 0);
-    ft_error = FT_New_Face(p->freetype, dmhm::config::font_file, dmhm::config::font_file_index, &p->ft_font_face);
+    ft_error = FT_New_Face(p->freetype, config::font_file, config::font_file_index, &p->ft_font_face);
     assert(ft_error != FT_Err_Unknown_File_Format);
     assert(ft_error == 0);
-    ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(dmhm::config::font_size*64), 72, 72);
+    ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
     assert(ft_error == 0);
+    p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 }
 
 CairoRenderer::~CairoRenderer() {
     p->release_cairo(p->cairo_surface, p->cairo_instance);
 
     FT_Error ft_error;
+    if(p->cairo_font_face) {
+        cairo_font_face_destroy(p->cairo_font_face);
+        p->cairo_font_face = nullptr;
+    }
     if(p->ft_font_face) {
         ft_error = FT_Done_Face(p->ft_font_face);
         assert(ft_error == 0);
@@ -101,9 +107,14 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     cairo_paint(p->cairo_instance);
     cairo_restore(p->cairo_instance);
 
-    p->fetch_danmaku();
-    p->animate_text();
+    cairo_set_font_face(p->cairo_instance, p->cairo_font_face);
+    cairo_set_font_size(p->cairo_instance, config::font_size);
+
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    p->fetch_danmaku(now);
+    p->animate_text(now);
     p->paint_text();
+
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
 
@@ -131,16 +142,18 @@ struct DanmakuAnimator {
         entry(entry) {
     }
     DanmakuEntry entry;
-    uint32_t x;
-    uint32_t y;
-    uint32_t height;
+    double x;
+    double y;
+    double height;
     double alpha = 1;
     bool moving = false;
-    uint32_t desty;
-    std::chrono::steady_clock::time_point desttime;
+    std::chrono::steady_clock::time_point starttime;
+    std::chrono::steady_clock::time_point endtime;
+    double starty;
+    double endy;
 };
 
-void CairoRendererPrivate::fetch_danmaku() {
+void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point now) {
     Fetcher *fetcher = reinterpret_cast<Fetcher *>(app->get_fetcher());
     assert(fetcher);
 
@@ -148,26 +161,59 @@ void CairoRendererPrivate::fetch_danmaku() {
     fetcher->pop_messages([&](DanmakuEntry &entry) {
         DanmakuAnimator animator(entry);
         animator.y = height;
+        cairo_text_extents_t text_extents;
+        cairo_text_extents(cairo_instance, animator.entry.message.c_str(), &text_extents);
+        animator.height = text_extents.height;
+        for(DanmakuAnimator &i : danmaku_list) {
+            i.starttime = now;
+            i.endtime = now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(config::danmaku_attack));
+            i.starty = i.y;
+            if(i.moving)
+                i.endy -= animator.height;
+            else {
+                i.endy = i.starty-animator.height;
+                i.moving = true;
+            }
+        }
         danmaku_list.push_front(std::move(animator));
     });
 }
 
-void CairoRendererPrivate::animate_text() {
-    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-    danmaku_list.remove_if([=](const DanmakuAnimator &x) -> bool {
-        return (x.entry.timestamp-now).count() >= dmhm::config::danmaku_lifetime;
+void CairoRendererPrivate::animate_text(std::chrono::steady_clock::time_point now) {
+    danmaku_list.remove_if([&](const DanmakuAnimator &x) -> bool {
+        double timespan = double((x.entry.timestamp-now).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
+        return timespan >= config::danmaku_lifetime;
     });
     for(DanmakuAnimator &i : danmaku_list) {
-        if((i.entry.timestamp-now).count() >= dmhm::config::danmaku_attack) {
-            i.x = dmhm::config::font_size;
+        double timespan = double((i.entry.timestamp-now).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
+        if(timespan < config::danmaku_attack) {
+            double progress = timespan/config::danmaku_attack;
+            i.x = (width-config::shadow_radius)*(1-progress*(2-progress))+config::shadow_radius;
+            i.alpha = progress;
+        } else if(timespan < config::danmaku_lifetime-config::danmaku_decay) {
+            i.x = config::shadow_radius;
             i.alpha = 1;
+        } else {
+            i.x = config::shadow_radius;
+            i.alpha = (config::danmaku_lifetime-timespan)/config::danmaku_decay;
         }
-        // TODO
+        if(i.moving)
+            if(now >= i.endtime) {
+                i.moving = false;
+                i.y = i.endy;
+            } else
+                i.y = i.starty+(i.endy-i.starty)*(now-i.starttime).count()/(i.endtime-i.starttime).count();
+        else;
     }
 }
 
 void CairoRendererPrivate::paint_text() {
-    // TODO
+    for(const DanmakuAnimator &i : danmaku_list) {
+        cairo_move_to(cairo_instance, i.x, i.y);
+        cairo_set_source_rgba(cairo_instance, 1, 1, 1, i.alpha);
+        cairo_show_text(cairo_instance, i.entry.message.c_str());
+        cairo_stroke(cairo_instance);
+    }
 }
 
 }

@@ -58,8 +58,10 @@ bool ConsoleFetcher::is_eof() {
 }
 
 void ConsoleFetcher::pop_messages(std::function<void (DanmakuEntry &entry)> callback) {
-    std::unique_lock<std::mutex> lock(p->mutex);
-    while(!p->message_queue.empty()) {
+    for(;;) {
+        std::unique_lock<std::mutex> lock(p->mutex);
+        if(p->message_queue.empty())
+            break;
         callback(p->message_queue.front());
         p->message_queue.pop_front();
     }
