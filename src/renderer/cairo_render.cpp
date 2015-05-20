@@ -52,6 +52,8 @@ struct CairoRendererPrivate {
 
     void create_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
     static void release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo);
+    void fetch_danmaku();
+    void animate_text();
     void paint_text();
 };
 
@@ -105,7 +107,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
 
-    return !p->is_eof() || !p->danmaku_list.empty();
+    return !p->is_eof || !p->danmaku_list.empty();
 }
 
 void CairoRendererPrivate::create_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo) {
@@ -113,7 +115,7 @@ void CairoRendererPrivate::create_cairo(cairo_surface_t *&cairo_surface, cairo_t
     cairo = cairo_create(cairo_surface);
 }
 
-static void CairoRendererPrivate::release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo) {
+void CairoRendererPrivate::release_cairo(cairo_surface_t *&cairo_surface, cairo_t *&cairo) {
     if(cairo) {
         cairo_destroy(cairo);
         cairo = nullptr;
@@ -125,6 +127,9 @@ static void CairoRendererPrivate::release_cairo(cairo_surface_t *&cairo_surface,
 }
 
 struct DanmakuAnimator {
+    DanmakuAnimator(const DanmakuEntry &entry) :
+        entry(entry) {
+    }
     DanmakuEntry entry;
     uint32_t x;
     uint32_t y;
@@ -136,13 +141,12 @@ struct DanmakuAnimator {
 };
 
 void CairoRendererPrivate::fetch_danmaku() {
-    Fetcher *fetcher = app->get_fetcher();
+    Fetcher *fetcher = reinterpret_cast<Fetcher *>(app->get_fetcher());
     assert(fetcher);
 
     is_eof = fetcher->is_eof();
     fetcher->pop_messages([&](DanmakuEntry &entry) {
-        DanmakuAnimator animator;
-        animator.entry = std::move(entry);
+        DanmakuAnimator animator(entry);
         animator.y = height;
         danmaku_list.push_front(std::move(animator));
     });
@@ -151,12 +155,12 @@ void CairoRendererPrivate::fetch_danmaku() {
 void CairoRendererPrivate::animate_text() {
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     danmaku_list.remove_if([=](const DanmakuAnimator &x) -> bool {
-        return x.entry.timestamp-now >= dmhm::config::danmaku_lifetime;
+        return (x.entry.timestamp-now).count() >= dmhm::config::danmaku_lifetime;
     });
     for(DanmakuAnimator &i : danmaku_list) {
-        if(i.entry.timestamp-now >= danmaku_attack) {
-            x = dmhm::config::font_size;
-            alpha = 1;
+        if((i.entry.timestamp-now).count() >= dmhm::config::danmaku_attack) {
+            i.x = dmhm::config::font_size;
+            i.alpha = 1;
         }
         // TODO
     }

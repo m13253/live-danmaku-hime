@@ -33,7 +33,7 @@ const double font_size = 18;
 
 const double danmaku_lifetime = 5;
 const double danmaku_attack = 0.5;
-const double danmaku_decay = 0.5;
+const double danmaku_decay = 1;
 
 }
 }
