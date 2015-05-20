@@ -24,6 +24,7 @@
 #include "../config.h"
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
 #include <map>
 #include <vector>
 #include <windows.h>
@@ -134,9 +135,12 @@ void GDIPresenter::paint_frame() {
 
     Renderer *renderer = reinterpret_cast<Renderer *>(p->app->get_renderer());
     assert(renderer);
-    renderer->paint_frame(width, height, [=](const uint32_t *bitmap, uint32_t stride) {
+    if(!renderer->paint_frame(width, height, [=](const uint32_t *bitmap, uint32_t stride) {
+        std::cerr << "Begin painting frame" << std::endl;
         p->do_paint(this, bitmap, width, height, stride);
-    });
+        std::cerr << "End painting frame" << std::endl;
+    }))
+        PostQuitMessage(0);
 }
 
 int GDIPresenter::run_loop() {

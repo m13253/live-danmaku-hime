@@ -29,6 +29,7 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
+#include <iostream>
 
 extern "C" void _cairo_mutex_initialize();
 
@@ -123,7 +124,6 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     p->fetch_danmaku(now);
     p->animate_text(now);
     p->paint_text();
-
 
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
 
