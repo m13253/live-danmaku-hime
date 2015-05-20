@@ -30,6 +30,11 @@
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
 
+// There is a bug in _cairo_ft_unscaled_font_map_lock,
+// causing mutex not being initialized correctly.
+// I will hack it dirtly by calling a private API.
+extern "C" void _cairo_mutex_initialize();
+
 namespace dmhm {
 
 struct DanmakuAnimator;
@@ -71,6 +76,8 @@ CairoRenderer::CairoRenderer(Application *app) {
     assert(ft_error == 0);
     ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
     assert(ft_error == 0);
+
+    _cairo_mutex_initialize();
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 }
 
