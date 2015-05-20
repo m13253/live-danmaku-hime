@@ -66,6 +66,7 @@ CairoRenderer::CairoRenderer(Application *app) {
     ft_error = FT_Init_FreeType(&p->freetype);
     assert(ft_error == 0);
     ft_error = FT_New_Face(p->freetype, config::font_file, config::font_file_index, &p->ft_font_face);
+    assert(ft_error != FT_Err_Cannot_Open_Resource);
     assert(ft_error != FT_Err_Unknown_File_Format);
     assert(ft_error == 0);
     ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
