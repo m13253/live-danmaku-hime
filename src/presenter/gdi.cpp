@@ -22,7 +22,6 @@
 #include "../app.h"
 #include "../renderer/renderer.h"
 #include "../config.h"
-#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -124,7 +123,7 @@ void GDIPresenter::report_error(const std::string error) {
 }
 
 void GDIPresenter::get_stage_size(uint32_t &width, uint32_t &height) {
-    assert(p->right >= p->left && p->bottom >= p->top);
+    dmhm_assert(p->right >= p->left && p->bottom >= p->top);
     width = p->right - p->left;
     height = p->bottom - p->top;
 }
@@ -134,7 +133,7 @@ void GDIPresenter::paint_frame() {
     get_stage_size(width, height);
 
     Renderer *renderer = reinterpret_cast<Renderer *>(p->app->get_renderer());
-    assert(renderer);
+    dmhm_assert(renderer);
     if(!renderer->paint_frame(width, height, [=](const uint32_t *bitmap, uint32_t stride) {
         p->do_paint(this, bitmap, width, height, stride);
     }))

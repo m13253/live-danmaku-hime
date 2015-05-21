@@ -32,6 +32,8 @@ static inline void unused_arg(T arg) {
     static_cast<void>(arg);
 }
 
+void dmhm_assert_failed(const char *expr, const char *file, unsigned int line);
+
 /* Available as a standalone library:
    https://github.com/m13253/cpp-proxy-ptr */
 template<typename _Tp, typename Allocator = std::allocator<_Tp>>
@@ -158,3 +160,7 @@ public:
 std::wstring utf8_to_wide(const std::string &utf8str, bool strict);
 
 }
+
+#ifndef dmhm_assert
+#define dmhm_assert(expr) ((expr) ? static_cast<void>(0) : ::dmhm::dmhm_assert_failed(#expr, __FILE__, __LINE__))
+#endif

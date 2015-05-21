@@ -22,7 +22,6 @@
 #include "../app.h"
 #include "../config.h"
 #include "../fetcher/fetcher.h"
-#include <cassert>
 #include <chrono>
 #include <functional>
 #include <list>
@@ -66,13 +65,13 @@ CairoRenderer::CairoRenderer(Application *app) {
     /* Initialize fonts */
     FT_Error ft_error;
     ft_error = FT_Init_FreeType(&p->freetype);
-    assert(ft_error == 0);
+    dmhm_assert(ft_error == 0);
     ft_error = FT_New_Face(p->freetype, config::font_file, config::font_file_index, &p->ft_font_face);
-    assert(ft_error != FT_Err_Cannot_Open_Resource);
-    assert(ft_error != FT_Err_Unknown_File_Format);
-    assert(ft_error == 0);
+    dmhm_assert(ft_error != FT_Err_Cannot_Open_Resource);
+    dmhm_assert(ft_error != FT_Err_Unknown_File_Format);
+    dmhm_assert(ft_error == 0);
     ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
-    assert(ft_error == 0);
+    dmhm_assert(ft_error == 0);
 
     /* There is a bug in _cairo_ft_unscaled_font_map_lock,
        causing mutex not being initialized correctly.
@@ -92,12 +91,12 @@ CairoRenderer::~CairoRenderer() {
     }
     if(p->ft_font_face) {
         ft_error = FT_Done_Face(p->ft_font_face);
-        assert(ft_error == 0);
+        dmhm_assert(ft_error == 0);
         p->ft_font_face = nullptr;
     }
     if(p->freetype) {
         ft_error = FT_Done_FreeType(p->freetype);
-        assert(ft_error == 0);
+        dmhm_assert(ft_error == 0);
         p->freetype = nullptr;
     }
 }
@@ -163,7 +162,7 @@ struct DanmakuAnimator {
 
 void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point now) {
     Fetcher *fetcher = reinterpret_cast<Fetcher *>(app->get_fetcher());
-    assert(fetcher);
+    dmhm_assert(fetcher);
 
     is_eof = fetcher->is_eof();
     fetcher->pop_messages([&](DanmakuEntry &entry) {
