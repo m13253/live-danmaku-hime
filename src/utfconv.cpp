@@ -160,4 +160,53 @@ std::string wide_to_utf8(const std::wstring &widestr, bool strict) {
     return utf8str;
 }
 
+std::string utf8_validify(const std::string &utf8str, bool strict) {
+    std::string validstr;
+    size_t i = 0;
+    validstr.reserve(utf8str.size());
+    while(i < utf8str.size()) {
+        if(uint8_t(utf8str[i]) < 0x80) {
+            validstr.push_back(utf8str[i]);
+            ++i;
+            continue;
+        } else if(uint8_t(utf8str[i]) < 0xc0) {
+        } else if(uint8_t(utf8str[i]) < 0xe0) {
+            if(utf8_check_continuation(utf8str, i, 1)) {
+                uint32_t ucs4 = uint32_t(utf8str[i] & 0x1f) << 6 | uint32_t(utf8str[i+1] & 0x3f);
+                if(ucs4 >= 0x80) {
+                    validstr.append({utf8str[i], utf8str[i+1]});
+                    i += 2;
+                    continue;
+                }
+            }
+        } else if(uint8_t(utf8str[i]) < 0xf0) {
+            if(utf8_check_continuation(utf8str, i, 2)) {
+                uint32_t ucs4 = uint32_t(utf8str[i] & 0xf) << 12 | uint32_t(utf8str[i+1] & 0x3f) << 6 | (utf8str[i+2] & 0x3f);
+                if(ucs4 >= 0x800 && (ucs4 & 0xf800) != 0xd800) {
+                    validstr.append({utf8str[i], utf8str[i+1], utf8str[i+2]});
+                    i += 3;
+                    continue;
+                }
+            }
+        } else if(uint8_t(utf8str[i]) < 0xf8) {
+            if(utf8_check_continuation(utf8str, i, 3)) {
+                uint32_t ucs4 = uint32_t(utf8str[i] & 0x7) << 18 | uint32_t(utf8str[i+1] & 0x3f) << 12 | uint32_t(utf8str[i+2] & 0x3f) << 6 | uint32_t(utf8str[i+3] & 0x3f);
+                if(ucs4 >= 0x10000 && ucs4 < 0x110000) {
+                    validstr.append({utf8str[i], utf8str[i+1], utf8str[i+2], utf8str[i+3]});
+                    i += 4;
+                    continue;
+                }
+            }
+        }
+        if(strict)
+            throw unicode_conversion_error();
+        else {
+            validstr.append("\xef\xbf\xbd", 3);
+            ++i;
+        }
+    }
+    validstr.shrink_to_fit();
+    return validstr;
+}
+
 }

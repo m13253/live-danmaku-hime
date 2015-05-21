@@ -119,7 +119,7 @@ GDIPresenter::~GDIPresenter() {
 }
 
 void GDIPresenter::report_error(const std::string error) {
-    MessageBoxW(nullptr, utf8_to_wide(error, false).c_str(), nullptr, MB_ICONERROR);
+    MessageBoxW(nullptr, utf8_to_wide(error).c_str(), nullptr, MB_ICONERROR);
 }
 
 void GDIPresenter::get_stage_size(uint32_t &width, uint32_t &height) {

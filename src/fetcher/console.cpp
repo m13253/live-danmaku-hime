@@ -69,7 +69,7 @@ void ConsoleFetcherPrivate::do_run(ConsoleFetcher *pub) {
     std::string input_buffer;
     while(std::getline(std::cin, input_buffer)) {
         std::unique_lock<std::mutex> lock(mutex);
-        message_queue.push_back(DanmakuEntry(input_buffer));
+        message_queue.push_back(DanmakuEntry(utf8_validify(input_buffer)));
     }
     is_eof = true;
 }

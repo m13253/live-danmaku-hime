@@ -157,7 +157,8 @@ public:
     unicode_conversion_error() : std::runtime_error("Can not convert string to Unicode") {}
 };
 
-std::wstring utf8_to_wide(const std::string &utf8str, bool strict);
+std::wstring utf8_to_wide(const std::string &utf8str, bool strict = false);
+std::string utf8_validify(const std::string &utf8str, bool strict = false);
 
 }
 
