@@ -59,6 +59,11 @@ struct CairoRendererPrivate {
     void fetch_danmaku(std::chrono::steady_clock::time_point now);
     void animate_text(std::chrono::steady_clock::time_point now);
     void paint_text();
+    void blend_layers();
+
+    std::vector<double> blur_kernel;
+    void generate_blur_kernel(uint32_t radius);
+    void get_blur_kernel(uint32_t radius, int32_t x, int32_t y);
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
@@ -79,8 +84,9 @@ CairoRenderer::CairoRenderer(Application *app) {
        causing mutex not being initialized correctly.
        I will hack it dirtly by calling a private API. */
     _cairo_mutex_initialize();
-
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
+
+    generate_blur_kernel(config::shadow_radius);
 }
 
 CairoRenderer::~CairoRenderer() {
@@ -138,9 +144,9 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
     cairo_paint(p->cairo_blend_layer);
     cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_surface(p->cairo_blend_layer, p->cairo_text_surface, 0, 0);
-    cairo_paint(p->cairo_blend_layer);
+    p->blend_layers();
 
+    cairo_surface_flush(p->cairo_blend_surface);
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_blend_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_blend_surface)/sizeof (uint32_t)));
 
     return !p->is_eof || !p->danmaku_list.empty();
@@ -239,6 +245,43 @@ void CairoRendererPrivate::paint_text() {
         cairo_show_text(cairo_text_layer, i.entry.message.c_str());
         cairo_stroke(cairo_text_layer);
     }
+}
+
+void CairoRendererPrivate::blend_layers() {
+    cairo_surface_flush(cairo_text_surface);
+    cairo_surface_flush(cairo_blend_surface);
+    const uint32_t *text_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_text_surface));
+    uint32_t text_stride = uint32_t(cairo_image_surface_get_stride(cairo_text_surface)/sizeof (uint32_t));
+    cairo_surface_flush(cairo_blend_surface);
+    uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
+    uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
+
+    auto get_alpha_from_text_layer = [&](uint32_t row, uint32_t col) -> double {
+        if(row < 0 || row >= height || col < 0 || col >= width)
+            return 0;
+        else
+            return double(text_bitmap[row*text_stride + col] >> 24) / 255;
+    }
+
+    //TODO
+    cairo_surface_mark_dirty(cairo_blend_surface);
+
+    cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
+    cairo_paint(cairo_blend_layer);
+}
+
+void CairoRendererPrivate::generate_blur_kernel(uint32_t radius) {
+    blur_kernel.resize((radius*2+1)*(radius*2+1));
+    // Make a working box blur
+    for(double &i : blur_kernel)
+        i = 1/((radius*2+1)*(radius*2+1));
+}
+
+double CairoRendererPrivate::get_blur_kernel(uint32_t radius, int32_t x, int32_t y) {
+    dmhm_assert(x+radius >= 0 && x <= radius*2);
+    x += radius;
+    y += radius;
+    return blur_kernel[]; // TODO
 }
 
 }
