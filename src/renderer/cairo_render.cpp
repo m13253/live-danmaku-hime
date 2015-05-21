@@ -46,8 +46,10 @@ struct CairoRendererPrivate {
     FT_Face ft_font_face = nullptr;
     cairo_font_face_t *cairo_font_face = nullptr;
 
-    cairo_surface_t *cairo_surface = nullptr;
-    cairo_t *cairo_instance = nullptr;
+    cairo_surface_t *cairo_blend_surface = nullptr;
+    cairo_t *cairo_blend_layer = nullptr;
+    cairo_surface_t *cairo_text_surface = nullptr;
+    cairo_t *cairo_text_layer = nullptr;
 
     bool is_eof = false;
     std::list<DanmakuAnimator> danmaku_list;
@@ -82,7 +84,8 @@ CairoRenderer::CairoRenderer(Application *app) {
 }
 
 CairoRenderer::~CairoRenderer() {
-    p->release_cairo(p->cairo_surface, p->cairo_instance);
+    p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
+    p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
 
     FT_Error ft_error;
     if(p->cairo_font_face) {
@@ -105,32 +108,40 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     if(width != p->width || height != p->height) {
         p->width = width;
         p->height = height;
-        p->release_cairo(p->cairo_surface, p->cairo_instance);
+        p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
+        p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
     }
-    if(!p->cairo_instance)
-        p->create_cairo(p->cairo_surface, p->cairo_instance);
+    if(!p->cairo_blend_layer)
+        p->create_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
+    if(!p->cairo_text_layer) {
+        p->create_cairo(p->cairo_text_surface, p->cairo_text_layer);
+        cairo_set_font_face(p->cairo_text_layer, p->cairo_font_face);
+        cairo_set_font_size(p->cairo_text_layer, config::font_size);
+        cairo_font_options_t *font_options = cairo_font_options_create();
+        cairo_get_font_options(p->cairo_text_layer, font_options);
+        cairo_font_options_set_antialias(font_options, CAIRO_ANTIALIAS_GRAY);
+        cairo_font_options_set_hint_style(font_options, CAIRO_HINT_STYLE_NONE);
+        cairo_font_options_set_hint_metrics(font_options, CAIRO_HINT_METRICS_OFF);
+        cairo_set_font_options(p->cairo_text_layer, font_options);
+        cairo_font_options_destroy(font_options);
+    }
 
-    cairo_save(p->cairo_instance);
-    cairo_set_operator(p->cairo_instance, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(p->cairo_instance);
-    cairo_restore(p->cairo_instance);
-
-    cairo_set_font_face(p->cairo_instance, p->cairo_font_face);
-    cairo_set_font_size(p->cairo_instance, config::font_size);
-    cairo_font_options_t *font_options = cairo_font_options_create();
-    cairo_get_font_options(p->cairo_instance, font_options);
-    cairo_font_options_set_antialias(font_options, CAIRO_ANTIALIAS_GRAY);
-    cairo_font_options_set_hint_style(font_options, CAIRO_HINT_STYLE_NONE);
-    cairo_font_options_set_hint_metrics(font_options, CAIRO_HINT_METRICS_OFF);
-    cairo_set_font_options(p->cairo_instance, font_options);
-    cairo_font_options_destroy(font_options);
+    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(p->cairo_text_layer);
+    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_SOURCE);
 
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     p->fetch_danmaku(now);
     p->animate_text(now);
     p->paint_text();
 
-    callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_surface)/sizeof (uint32_t)));
+    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
+    cairo_paint(p->cairo_blend_layer);
+    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_surface(p->cairo_blend_layer, p->cairo_text_surface, 0, 0);
+    cairo_paint(p->cairo_blend_layer);
+
+    callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_blend_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_blend_surface)/sizeof (uint32_t)));
 
     return !p->is_eof || !p->danmaku_list.empty();
 }
@@ -176,7 +187,7 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
         DanmakuAnimator animator(entry);
         animator.y = height-config::shadow_radius;
         cairo_text_extents_t text_extents;
-        cairo_text_extents(cairo_instance, animator.entry.message.c_str(), &text_extents);
+        cairo_text_extents(cairo_text_layer, animator.entry.message.c_str(), &text_extents);
         animator.height = text_extents.height+config::extra_line_height;
         for(DanmakuAnimator &i : danmaku_list) {
             i.starttime = now;
@@ -223,10 +234,10 @@ void CairoRendererPrivate::animate_text(std::chrono::steady_clock::time_point no
 
 void CairoRendererPrivate::paint_text() {
     for(const DanmakuAnimator &i : danmaku_list) {
-        cairo_move_to(cairo_instance, i.x, i.y);
-        cairo_set_source_rgba(cairo_instance, 1, 1, 1, i.alpha);
-        cairo_show_text(cairo_instance, i.entry.message.c_str());
-        cairo_stroke(cairo_instance);
+        cairo_move_to(cairo_text_layer, i.x, i.y);
+        cairo_set_source_rgba(cairo_text_layer, 1, 1, 1, i.alpha);
+        cairo_show_text(cairo_text_layer, i.entry.message.c_str());
+        cairo_stroke(cairo_text_layer);
     }
 }
 
