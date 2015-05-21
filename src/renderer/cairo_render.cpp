@@ -29,7 +29,6 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
-#include <iostream>
 
 extern "C" void _cairo_mutex_initialize();
 
@@ -169,10 +168,10 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
     is_eof = fetcher->is_eof();
     fetcher->pop_messages([&](DanmakuEntry &entry) {
         DanmakuAnimator animator(entry);
-        animator.y = height;
+        animator.y = height-config::shadow_radius;
         cairo_text_extents_t text_extents;
         cairo_text_extents(cairo_instance, animator.entry.message.c_str(), &text_extents);
-        animator.height = text_extents.height;
+        animator.height = text_extents.height+config::extra_line_height;
         for(DanmakuAnimator &i : danmaku_list) {
             i.starttime = now;
             i.endtime = now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(config::danmaku_attack));
@@ -190,11 +189,11 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
 
 void CairoRendererPrivate::animate_text(std::chrono::steady_clock::time_point now) {
     danmaku_list.remove_if([&](const DanmakuAnimator &x) -> bool {
-        double timespan = double((x.entry.timestamp-now).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
+        double timespan = double((now-x.entry.timestamp).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
         return timespan >= config::danmaku_lifetime;
     });
     for(DanmakuAnimator &i : danmaku_list) {
-        double timespan = double((i.entry.timestamp-now).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
+        double timespan = double((now-i.entry.timestamp).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
         if(timespan < config::danmaku_attack) {
             double progress = timespan/config::danmaku_attack;
             i.x = (width-config::shadow_radius)*(1-progress*(2-progress))+config::shadow_radius;

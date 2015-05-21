@@ -25,12 +25,12 @@ namespace dmhm {
 namespace config{
 
 const uint32_t stage_width = 480;
-const uint32_t extra_line_height = 0;
+const uint32_t extra_line_height = 8;
 
 const char *const font_file = "font.ttf";
 const uint32_t font_file_index = 0;
-const double font_size = 18;
-const double shadow_radius = 18;
+const double font_size = 24;
+const double shadow_radius = 24;
 
 const double danmaku_lifetime = 5;
 const double danmaku_attack = 0.5;
