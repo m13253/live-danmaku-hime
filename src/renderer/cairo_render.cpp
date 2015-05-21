@@ -117,6 +117,13 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
 
     cairo_set_font_face(p->cairo_instance, p->cairo_font_face);
     cairo_set_font_size(p->cairo_instance, config::font_size);
+    cairo_font_options_t *font_options = cairo_font_options_create();
+    cairo_get_font_options(p->cairo_instance, font_options);
+    cairo_font_options_set_antialias(font_options, CAIRO_ANTIALIAS_GRAY);
+    cairo_font_options_set_hint_style(font_options, CAIRO_HINT_STYLE_NONE);
+    cairo_font_options_set_hint_metrics(font_options, CAIRO_HINT_METRICS_OFF);
+    cairo_set_font_options(p->cairo_instance, font_options);
+    cairo_font_options_destroy(font_options);
 
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     p->fetch_danmaku(now);
