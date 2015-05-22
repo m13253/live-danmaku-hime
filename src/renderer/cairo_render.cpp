@@ -22,9 +22,11 @@
 #include "../app.h"
 #include "../config.h"
 #include "../fetcher/fetcher.h"
+#include <cstdlib>
 #include <chrono>
 #include <functional>
 #include <list>
+#include <vector>
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
@@ -63,7 +65,7 @@ struct CairoRendererPrivate {
 
     std::vector<double> blur_kernel;
     void generate_blur_kernel(uint32_t radius);
-    void get_blur_kernel(uint32_t radius, int32_t x, int32_t y);
+    double get_blur_kernel(uint32_t radius, int32_t x, int32_t y);
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
@@ -86,7 +88,7 @@ CairoRenderer::CairoRenderer(Application *app) {
     _cairo_mutex_initialize();
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 
-    generate_blur_kernel(config::shadow_radius);
+    p->generate_blur_kernel(config::shadow_radius);
 }
 
 CairoRenderer::~CairoRenderer() {
@@ -134,7 +136,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
 
     cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_CLEAR);
     cairo_paint(p->cairo_text_layer);
-    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_SOURCE);
+    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_OVER);
 
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     p->fetch_danmaku(now);
@@ -143,7 +145,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
 
     cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
     cairo_paint(p->cairo_blend_layer);
-    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_SOURCE);
+    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_OVER);
     p->blend_layers();
 
     cairo_surface_flush(p->cairo_blend_surface);
@@ -261,27 +263,38 @@ void CairoRendererPrivate::blend_layers() {
             return 0;
         else
             return double(text_bitmap[row*text_stride + col] >> 24) / 255;
-    }
+    };
 
-    //TODO
+    /*
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++) {
+            double sum = 0;
+            for(int32_t ki = -int32_t(config::shadow_radius); ki <= config::shadow_radius; ki++)
+                for(int32_t kj = -int32_t(config::shadow_radius); kj <= config::shadow_radius; kj++)
+                    sum += get_alpha_from_text_layer(i+ki, j+kj) * get_blur_kernel(config::shadow_radius, ki, kj);
+            blend_bitmap[i*blend_stride + j] = uint32_t(sum*255) << 24;
+        }
+    */
+
     cairo_surface_mark_dirty(cairo_blend_surface);
-
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
     cairo_paint(cairo_blend_layer);
 }
 
 void CairoRendererPrivate::generate_blur_kernel(uint32_t radius) {
-    blur_kernel.resize((radius*2+1)*(radius*2+1));
+    blur_kernel.resize((radius+1)*(radius+1));
     // Make a working box blur
     for(double &i : blur_kernel)
         i = 1/((radius*2+1)*(radius*2+1));
 }
 
 double CairoRendererPrivate::get_blur_kernel(uint32_t radius, int32_t x, int32_t y) {
-    dmhm_assert(x+radius >= 0 && x <= radius*2);
-    x += radius;
-    y += radius;
-    return blur_kernel[]; // TODO
+    uint32_t abs_x = uint32_t(std::abs(x));
+    uint32_t abs_y = uint32_t(std::abs(y));
+    if(abs_x > radius || abs_y > radius)
+        return 0;
+    else
+        return blur_kernel[abs_x*(radius+1) + abs_y];
 }
 
 }
