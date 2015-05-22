@@ -64,8 +64,8 @@ struct CairoRendererPrivate {
     void paint_text();
     void blend_layers();
 
-    std::unique_ptr<double []> blur_kernel;
-    std::unique_ptr<double []> blur_temp;
+    std::unique_ptr<float []> blur_kernel;
+    std::unique_ptr<float []> blur_temp;
     void generate_blur_kernel();
 };
 
@@ -119,7 +119,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
         p->height = height;
         p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
         p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
-        p->blur_temp.reset(new double[width*height]);
+        p->blur_temp.reset(new float[width*height]);
     }
     if(!p->cairo_blend_layer)
         p->create_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
@@ -263,29 +263,38 @@ void CairoRendererPrivate::blend_layers() {
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
+    for(uint32_t i = 0; i < width*height; i++)
+        blur_temp[i] = 0.0;
+
     for(uint32_t y = 0; y < height; y++)
         for(uint32_t x = 0; x < width; x++) {
-            double sum = 0;
-            for(uint32_t dx = 0; dx <= radius*2; dx++)
-                if(x+dx >= radius) {
-                    uint32_t column = x+dx-radius;
-                    if(column < width)
-                        sum += double(text_bitmap[y*text_stride + column] >> 24)*blur_kernel[dx] / 255;
-                }
-            blur_temp[y*width + x] = sum;
+            uint32_t alpha = text_bitmap[y*text_stride + x];
+            if(alpha != 0)
+                for(uint32_t dx = 0; dx <= radius*2; dx++)
+                    if(x+dx >= radius) {
+                        uint32_t column = x+dx-radius;
+                        if(column < width)
+                            blur_temp[y*width + column] += alpha*blur_kernel[dx];
+                    }
         }
 
     for(uint32_t x = 0; x < width; x++)
         for(uint32_t y = 0; y < height; y++) {
-            double sum = 0;
-            for(uint32_t dy = 0; dy <= radius*2; dy++)
-                if(y+dy >= radius) {
-                    uint32_t row = y+dy-radius;
-                    if(row < height)
-                        sum += blur_temp[row*width + x]*blur_kernel[dy];
-                }
-            blend_bitmap[y*blend_stride + x] = std::min(uint32_t((1-(1-sum)*(1-sum))*255), uint32_t(255)) << 24;
+            float alpha = blur_temp[y*width + x];
+            if(alpha != 0.0f) // It is safe to compare directly since no floating point error may occur
+                for(uint32_t dy = 0; dy <= radius*2; dy++)
+                    if(y+dy >= radius) {
+                        uint32_t row = y+dy-radius;
+                        if(row < height) {
+                            uint32_t old_alpha = blend_bitmap[row*blend_stride + x] >> 24;
+                            old_alpha += uint32_t(blur_temp[y*width + x]*blur_kernel[dy]/0x1000000);
+                            blend_bitmap[row*blend_stride + x] = std::min(old_alpha, 255u) << 24;
+                        }
+                    }
         }
+
+    for(uint32_t i = 0; i < blend_stride*height; i++)
+        blend_bitmap[i] = uint32_t((1-(1-blend_bitmap[i]/double(0xff000000))*(1-blend_bitmap[i]/double(0xff000000)))*0xff000000) & 0xff000000;
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
@@ -296,9 +305,9 @@ void CairoRendererPrivate::generate_blur_kernel() {
     dmhm_assert(config::shadow_radius >= 0);
     int32_t radius = int32_t(config::shadow_radius);
 
-    blur_kernel.reset(new double[radius*2+1]);
-    double db_sq_sigma = radius*radius*2/9.0;
-    double sum = 0;
+    blur_kernel.reset(new float[radius*2+1]);
+    float db_sq_sigma = radius*radius*2/9.0;
+    float sum = 0;
     for(int32_t i = 0; i <= radius*2; i++)
         sum += blur_kernel[i] = exp(-(i-radius)*(i-radius)/db_sq_sigma);
     for(int32_t i = 0; i <= radius*2; i++)
