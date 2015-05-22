@@ -286,15 +286,15 @@ void CairoRendererPrivate::blend_layers() {
                     if(y+dy >= radius) {
                         uint32_t row = y+dy-radius;
                         if(row < height) {
-                            uint32_t old_alpha = blend_bitmap[row*blend_stride + x] >> 24;
-                            old_alpha += uint32_t(blur_temp[y*width + x]*blur_kernel[dy]/0x1000000);
-                            blend_bitmap[row*blend_stride + x] = std::min(old_alpha, 255u) << 24;
+                            uint32_t old_alpha = blend_bitmap[row*blend_stride + x];
+                            old_alpha += uint32_t(blur_temp[y*width + x]*blur_kernel[dy]/0x100);
+                            blend_bitmap[row*blend_stride + x] = std::min(old_alpha, 0xff0000u);
                         }
                     }
         }
 
     for(uint32_t i = 0; i < blend_stride*height; i++)
-        blend_bitmap[i] = uint32_t((1-(1-blend_bitmap[i]/double(0xff000000))*(1-blend_bitmap[i]/double(0xff000000)))*0xff000000) & 0xff000000;
+        blend_bitmap[i] = uint32_t((1-(1-blend_bitmap[i]/double(0xff0000))*(1-blend_bitmap[i]/double(0xff0000)))*0xff000000) & 0xff000000;
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
