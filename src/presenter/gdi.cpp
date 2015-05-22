@@ -141,6 +141,8 @@ void GDIPresenter::paint_frame() {
 }
 
 int GDIPresenter::run_loop() {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+
     MSG message;
     while(GetMessageW(&message, nullptr, 0, 0)) {
         TranslateMessage(&message);

@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <vector>
 #include <cairo/cairo.h>
@@ -67,6 +68,11 @@ struct CairoRendererPrivate {
     std::unique_ptr<float []> blur_kernel;
     std::unique_ptr<float []> blur_temp;
     void generate_blur_kernel();
+
+    
+    std::chrono::steady_clock::time_point fps_checkpoint;
+    uint32_t fps_count;
+    void print_fps(std::chrono::steady_clock::time_point now);
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
@@ -90,6 +96,9 @@ CairoRenderer::CairoRenderer(Application *app) {
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 
     p->generate_blur_kernel();
+
+    p->fps_checkpoint = std::chrono::steady_clock::now();
+    p->fps_count = 0;
 }
 
 CairoRenderer::~CairoRenderer() {
@@ -141,6 +150,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_OVER);
 
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    p->print_fps(now);
     p->fetch_danmaku(now);
     p->animate_text(now);
     p->paint_text();
@@ -187,6 +197,15 @@ struct DanmakuAnimator {
     double starty;
     double endy;
 };
+
+void CairoRendererPrivate::print_fps(std::chrono::steady_clock::time_point now) {
+    fps_count++;
+    if(now-fps_checkpoint > std::chrono::seconds(1)) {
+        std::cerr << "FPS: " << fps_count << std::endl;
+        fps_count = 0;
+        fps_checkpoint = now;
+    }
+}
 
 void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point now) {
     Fetcher *fetcher = reinterpret_cast<Fetcher *>(app->get_fetcher());
