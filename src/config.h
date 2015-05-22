@@ -32,7 +32,7 @@ const uint32_t font_file_index = 0;
 const double font_size = 24;
 const double shadow_radius = 10;
 
-const double danmaku_lifetime = 5;
+const double danmaku_lifetime = 8;
 const double danmaku_attack = 0.5;
 const double danmaku_decay = 1;
 
