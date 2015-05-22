@@ -64,8 +64,8 @@ struct CairoRendererPrivate {
     void blend_layers();
 
     std::vector<double> blur_kernel;
-    void generate_blur_kernel(uint32_t radius);
-    double get_blur_kernel(uint32_t radius, int32_t x, int32_t y);
+    std::vector<double> blur_temp;
+    void generate_blur_kernel();
 };
 
 CairoRenderer::CairoRenderer(Application *app) {
@@ -88,7 +88,7 @@ CairoRenderer::CairoRenderer(Application *app) {
     _cairo_mutex_initialize();
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 
-    p->generate_blur_kernel(config::shadow_radius);
+    p->generate_blur_kernel();
 }
 
 CairoRenderer::~CairoRenderer() {
@@ -178,7 +178,7 @@ struct DanmakuAnimator {
     double x;
     double y;
     double height;
-    double alpha = 1;
+    double alpha = 0;
     bool moving = false;
     std::chrono::steady_clock::time_point starttime;
     std::chrono::steady_clock::time_point endtime;
@@ -198,15 +198,16 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
         cairo_text_extents(cairo_text_layer, animator.entry.message.c_str(), &text_extents);
         animator.height = text_extents.height+config::extra_line_height;
         for(DanmakuAnimator &i : danmaku_list) {
-            i.starttime = now;
-            i.endtime = now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(config::danmaku_attack));
-            i.starty = i.y;
-            if(i.moving)
+            if(i.moving) {
+                i.starty = i.starty+(i.endy-i.starty)*(now-i.starttime).count()/(i.endtime-i.starttime).count();
                 i.endy -= animator.height;
-            else {
+            } else {
+                i.starty = i.y;
                 i.endy = i.starty-animator.height;
                 i.moving = true;
             }
+            i.starttime = now;
+            i.endtime = now + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(config::danmaku_attack));
         }
         danmaku_list.push_front(std::move(animator));
     });
@@ -215,7 +216,7 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
 void CairoRendererPrivate::animate_text(std::chrono::steady_clock::time_point now) {
     danmaku_list.remove_if([&](const DanmakuAnimator &x) -> bool {
         double timespan = double((now-x.entry.timestamp).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
-        return timespan >= config::danmaku_lifetime;
+        return timespan >= config::danmaku_lifetime || x.y < -2*config::shadow_radius;
     });
     for(DanmakuAnimator &i : danmaku_list) {
         double timespan = double((now-i.entry.timestamp).count())*std::chrono::steady_clock::period::num/std::chrono::steady_clock::period::den;
@@ -245,8 +246,8 @@ void CairoRendererPrivate::paint_text() {
         cairo_move_to(cairo_text_layer, i.x, i.y);
         cairo_set_source_rgba(cairo_text_layer, 1, 1, 1, i.alpha);
         cairo_show_text(cairo_text_layer, i.entry.message.c_str());
-        cairo_stroke(cairo_text_layer);
     }
+    cairo_stroke(cairo_text_layer);
 }
 
 void CairoRendererPrivate::blend_layers() {
@@ -258,43 +259,41 @@ void CairoRendererPrivate::blend_layers() {
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
-    auto get_alpha_from_text_layer = [&](uint32_t row, uint32_t col) -> double {
-        if(row < 0 || row >= height || col < 0 || col >= width)
-            return 0;
-        else
-            return double(text_bitmap[row*text_stride + col] >> 24) / 255;
-    };
-
-    /*
-    for(uint32_t i = 0; i < height; i++)
-        for(uint32_t j = 0; j < width; j++) {
+    blur_temp.resize(width*height);
+    for(uint32_t y = 0; y < height; y++)
+        for(uint32_t x = 0; x < width; x++) {
             double sum = 0;
-            for(int32_t ki = -int32_t(config::shadow_radius); ki <= config::shadow_radius; ki++)
-                for(int32_t kj = -int32_t(config::shadow_radius); kj <= config::shadow_radius; kj++)
-                    sum += get_alpha_from_text_layer(i+ki, j+kj) * get_blur_kernel(config::shadow_radius, ki, kj);
-            blend_bitmap[i*blend_stride + j] = uint32_t(sum*255) << 24;
+            for(uint32_t dx = 0; dx <= config::shadow_radius*2; dx++)
+                if(x+dx >= config::shadow_radius) {
+                    uint32_t column = x+dx-config::shadow_radius;
+                    if(column < width)
+                        sum += double(text_bitmap[y*text_stride + column] >> 24)*blur_kernel[dx] / 255;
+                }
+            blur_temp[y*width + x] = sum;
         }
-    */
+
+    for(uint32_t x = 0; x < width; x++)
+        for(uint32_t y = 0; y < height; y++) {
+            double sum = 0;
+            for(uint32_t dy = 0; dy <= config::shadow_radius*2; dy++)
+                if(y+dy >= config::shadow_radius) {
+                    uint32_t row = y+dy-config::shadow_radius;
+                    if(row < height)
+                        sum += blur_temp[row*width + x]*blur_kernel[dy];
+                }
+            blend_bitmap[y*blend_stride + x] = std::min(uint32_t(sum*255), uint32_t(255)) << 24;
+        }
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
     cairo_paint(cairo_blend_layer);
 }
 
-void CairoRendererPrivate::generate_blur_kernel(uint32_t radius) {
-    blur_kernel.resize((radius+1)*(radius+1));
+void CairoRendererPrivate::generate_blur_kernel() {
+    blur_kernel.resize(config::shadow_radius*2+1);
     // Make a working box blur
     for(double &i : blur_kernel)
-        i = 1/((radius*2+1)*(radius*2+1));
-}
-
-double CairoRendererPrivate::get_blur_kernel(uint32_t radius, int32_t x, int32_t y) {
-    uint32_t abs_x = uint32_t(std::abs(x));
-    uint32_t abs_y = uint32_t(std::abs(y));
-    if(abs_x > radius || abs_y > radius)
-        return 0;
-    else
-        return blur_kernel[abs_x*(radius+1) + abs_y];
+        i = 1/((config::shadow_radius*2+1));
 }
 
 }
