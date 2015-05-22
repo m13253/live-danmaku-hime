@@ -31,7 +31,6 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
-#include <iostream>
 
 extern "C" void _cairo_mutex_initialize();
 
@@ -254,6 +253,8 @@ void CairoRendererPrivate::paint_text() {
 }
 
 void CairoRendererPrivate::blend_layers() {
+    uint32_t radius = uint32_t(config::shadow_radius);
+
     cairo_surface_flush(cairo_text_surface);
     cairo_surface_flush(cairo_blend_surface);
     const uint32_t *text_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_text_surface));
@@ -265,9 +266,9 @@ void CairoRendererPrivate::blend_layers() {
     for(uint32_t y = 0; y < height; y++)
         for(uint32_t x = 0; x < width; x++) {
             double sum = 0;
-            for(uint32_t dx = 0; dx <= config::shadow_radius*2; dx++)
-                if(x+dx >= config::shadow_radius) {
-                    uint32_t column = x+dx-config::shadow_radius;
+            for(uint32_t dx = 0; dx <= radius*2; dx++)
+                if(x+dx >= radius) {
+                    uint32_t column = x+dx-radius;
                     if(column < width)
                         sum += double(text_bitmap[y*text_stride + column] >> 24)*blur_kernel[dx] / 255;
                 }
@@ -277,9 +278,9 @@ void CairoRendererPrivate::blend_layers() {
     for(uint32_t x = 0; x < width; x++)
         for(uint32_t y = 0; y < height; y++) {
             double sum = 0;
-            for(uint32_t dy = 0; dy <= config::shadow_radius*2; dy++)
-                if(y+dy >= config::shadow_radius) {
-                    uint32_t row = y+dy-config::shadow_radius;
+            for(uint32_t dy = 0; dy <= radius*2; dy++)
+                if(y+dy >= radius) {
+                    uint32_t row = y+dy-radius;
                     if(row < height)
                         sum += blur_temp[row*width + x]*blur_kernel[dy];
                 }
@@ -292,12 +293,15 @@ void CairoRendererPrivate::blend_layers() {
 }
 
 void CairoRendererPrivate::generate_blur_kernel() {
-    blur_kernel.reset(new double[config::shadow_radius*2+1]);
-    double db_sq_sigma = config::shadow_radius*config::shadow_radius*2/9.0;
+    dmhm_assert(config::shadow_radius >= 0);
+    int32_t radius = int32_t(config::shadow_radius);
+
+    blur_kernel.reset(new double[radius*2+1]);
+    double db_sq_sigma = radius*radius*2/9.0;
     double sum = 0;
-    for(uint32_t i = 0; i <= config::shadow_radius*2; i++)
-        sum += blur_kernel[i] = exp(-(i-config::shadow_radius)*(i-config::shadow_radius)/db_sq_sigma);
-    for(uint32_t i = 0; i <= config::shadow_radius*2; i++)
+    for(int32_t i = 0; i <= radius*2; i++)
+        sum += blur_kernel[i] = exp(-(i-radius)*(i-radius)/db_sq_sigma);
+    for(int32_t i = 0; i <= radius*2; i++)
         blur_kernel[i] /= sum;
 }
 
