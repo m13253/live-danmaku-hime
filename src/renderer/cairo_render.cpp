@@ -22,6 +22,7 @@
 #include "../app.h"
 #include "../config.h"
 #include "../fetcher/fetcher.h"
+#include <cmath>
 #include <cstdlib>
 #include <chrono>
 #include <functional>
@@ -30,6 +31,7 @@
 #include <cairo/cairo.h>
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
+#include <iostream>
 
 extern "C" void _cairo_mutex_initialize();
 
@@ -63,8 +65,8 @@ struct CairoRendererPrivate {
     void paint_text();
     void blend_layers();
 
-    std::vector<double> blur_kernel;
-    std::vector<double> blur_temp;
+    std::unique_ptr<double []> blur_kernel;
+    std::unique_ptr<double []> blur_temp;
     void generate_blur_kernel();
 };
 
@@ -118,6 +120,7 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
         p->height = height;
         p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
         p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
+        p->blur_temp.reset(new double[width*height]);
     }
     if(!p->cairo_blend_layer)
         p->create_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
@@ -259,7 +262,6 @@ void CairoRendererPrivate::blend_layers() {
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
-    blur_temp.resize(width*height);
     for(uint32_t y = 0; y < height; y++)
         for(uint32_t x = 0; x < width; x++) {
             double sum = 0;
@@ -281,7 +283,7 @@ void CairoRendererPrivate::blend_layers() {
                     if(row < height)
                         sum += blur_temp[row*width + x]*blur_kernel[dy];
                 }
-            blend_bitmap[y*blend_stride + x] = std::min(uint32_t(sum*255), uint32_t(255)) << 24;
+            blend_bitmap[y*blend_stride + x] = std::min(uint32_t((1-(1-sum)*(1-sum))*255), uint32_t(255)) << 24;
         }
 
     cairo_surface_mark_dirty(cairo_blend_surface);
@@ -290,10 +292,13 @@ void CairoRendererPrivate::blend_layers() {
 }
 
 void CairoRendererPrivate::generate_blur_kernel() {
-    blur_kernel.resize(config::shadow_radius*2+1);
-    // Make a working box blur
-    for(double &i : blur_kernel)
-        i = 1/((config::shadow_radius*2+1));
+    blur_kernel.reset(new double[config::shadow_radius*2+1]);
+    double db_sq_sigma = config::shadow_radius*config::shadow_radius*2/9.0;
+    double sum = 0;
+    for(uint32_t i = 0; i <= config::shadow_radius*2; i++)
+        sum += blur_kernel[i] = exp(-(i-config::shadow_radius)*(i-config::shadow_radius)/db_sq_sigma);
+    for(uint32_t i = 0; i <= config::shadow_radius*2; i++)
+        blur_kernel[i] /= sum;
 }
 
 }
