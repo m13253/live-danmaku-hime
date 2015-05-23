@@ -70,7 +70,11 @@ struct CairoRendererPrivate {
     uint32_t blur_boxes[3];
     void generate_blur_boxes();
     std::unique_ptr<uint32_t []> blur_temp[2];
-    
+    void gauss_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h);
+    static void box_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r);
+    static void box_blur_H(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r);
+    static void box_blur_T(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r);
+
     std::chrono::steady_clock::time_point fps_checkpoint;
     uint32_t fps_count;
     void print_fps(std::chrono::steady_clock::time_point now);
@@ -287,73 +291,10 @@ void CairoRendererPrivate::blend_layers() {
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
-    /* Thanks to http://blog.ivank.net/fastest-gaussian-blur.html
-       I rewrote the original algorithm in C++*/
-    const auto boxBlurH = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
-        uint32_t iarr = r*2+1;
-        for(int32_t i = 0; i < h; i++) {
-            int32_t ti = i*w, li = ti, ri = ti+r;
-            uint32_t fv = scl[ti], lv = scl[ti+w-1], val = (r+1)*fv;
-            for(int32_t j = 0; j < r; j++)
-                val += scl[ti+j];
-            for(int32_t j = 0; j <= r; j++) {
-                val += scl[ri++] - fv;
-                tcl[ti++] = val/iarr;
-            }
-            for(int32_t j = r+1; j < w-r; j++) {
-                val += scl[ri++] - scl[li++];
-                tcl[ti++] = val/iarr;
-            }
-            for(int32_t j = w-r; j < w; j++) {
-                val += lv - scl[li++];
-                tcl[ti++] = val/iarr;
-            }
-        }
-    };
-
-    const auto boxBlurT = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
-        uint32_t iarr = r*2+1;
-        for(int32_t i = 0; i < w; i++) {
-            int32_t ti = i, li = ti, ri = ti+r*w;
-            uint32_t fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1)*fv;
-            for(int32_t j = 0; j < r; j++)
-                val += scl[ti+j*w];
-            for(int32_t j = 0; j <= r; j++) {
-                val += scl[ri] - fv;
-                tcl[ti] = val/iarr;
-                ri += w; ti += w;
-            }
-            for(int32_t j = r+1; j < h-r; j++) {
-                val += scl[ri] - scl[li];
-                tcl[ti] = val/iarr;
-                li += w; ri += w; ti += w;
-            }
-            for(int32_t j = h-r; h < h; j++) {
-                val += lv - scl[li];
-                tcl[ti] = val/iarr;
-                li += w; ti += w;
-            }
-        }
-    };
-
-    const auto boxBlur = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
-        for(int32_t i = 0; i < w*h; i++)
-            tcl[i] = scl[i];
-        boxBlurH(tcl, scl, w, h, r);
-        boxBlurT(scl, tcl, w, h, r);
-    };
-
-    const auto gaussBlur = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h) {
-        const uint32_t *bxs = blur_boxes;
-        boxBlur(scl, tcl, w, h, int32_t((bxs[0]-1)/2));
-        boxBlur(tcl, scl, w, h, int32_t((bxs[1]-1)/2));
-        boxBlur(scl, tcl, w, h, int32_t((bxs[2]-1)/2));
-    };
-
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
             blur_temp[0][i*width + j] = text_bitmap[i*text_stride + j] >> 24;
-    gaussBlur(&blur_temp[0][0], &blur_temp[1][0], width, height);
+    gauss_blur(&blur_temp[0][0], &blur_temp[1][0], width, height);
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
             blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[0][i*width + j]];
@@ -383,6 +324,69 @@ void CairoRendererPrivate::generate_blur_boxes() {
 
     for(uint32_t i = 0; i < n; i++)
         blur_boxes[i] = i<m ? wl : wu;
+}
+
+/* Thanks to http://blog.ivank.net/fastest-gaussian-blur.html
+   I rewrote the original algorithm in C++*/
+void CairoRendererPrivate::gauss_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h) {
+    const uint32_t *bxs = blur_boxes;
+    box_blur(scl, tcl, w, h, int32_t((bxs[0]-1)/2));
+    box_blur(tcl, scl, w, h, int32_t((bxs[1]-1)/2));
+    box_blur(scl, tcl, w, h, int32_t((bxs[2]-1)/2));
+}
+
+void CairoRendererPrivate::box_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+    for(int32_t i = 0; i < w*h; i++)
+        tcl[i] = scl[i];
+    box_blur_H(tcl, scl, w, h, r);
+    box_blur_T(scl, tcl, w, h, r);
+}
+
+void CairoRendererPrivate::box_blur_H(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+    uint32_t iarr = r*2+1;
+    for(int32_t i = 0; i < h; i++) {
+        int32_t ti = i*w, li = ti, ri = ti+r;
+        uint32_t fv = scl[ti], lv = scl[ti+w-1], val = (r+1)*fv;
+        for(int32_t j = 0; j < r; j++)
+            val += scl[ti+j];
+        for(int32_t j = 0; j <= r; j++) {
+            val += scl[ri++] - fv;
+            tcl[ti++] = val/iarr;
+        }
+        for(int32_t j = r+1; j < w-r; j++) {
+            val += scl[ri++] - scl[li++];
+            tcl[ti++] = val/iarr;
+        }
+        for(int32_t j = w-r; j < w; j++) {
+            val += lv - scl[li++];
+            tcl[ti++] = val/iarr;
+        }
+    }
+}
+
+void CairoRendererPrivate::box_blur_T(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+    uint32_t iarr = r*2+1;
+    for(int32_t i = 0; i < w; i++) {
+        int32_t ti = i, li = ti, ri = ti+r*w;
+        uint32_t fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1)*fv;
+        for(int32_t j = 0; j < r; j++)
+            val += scl[ti+j*w];
+        for(int32_t j = 0; j <= r; j++) {
+            val += scl[ri] - fv;
+            tcl[ti] = val/iarr;
+            ri += w; ti += w;
+        }
+        for(int32_t j = r+1; j < h-r; j++) {
+            val += scl[ri] - scl[li];
+            tcl[ti] = val/iarr;
+            li += w; ri += w; ti += w;
+        }
+        for(int32_t j = h-r; h < h; j++) {
+            val += lv - scl[li];
+            tcl[ti] = val/iarr;
+            li += w; ti += w;
+        }
+    }
 }
 
 }
