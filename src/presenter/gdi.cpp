@@ -141,8 +141,6 @@ void GDIPresenter::paint_frame() {
 }
 
 int GDIPresenter::run_loop() {
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-
     MSG message;
     while(GetMessageW(&message, nullptr, 0, 0)) {
         TranslateMessage(&message);
@@ -278,6 +276,7 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
                 pub->report_error("\xe5\x90\xaf\xe5\x8a\xa8\xe5\x8a\xa8\xe7\x94\xbb\xe5\xae\x9a\xe6\x97\xb6\xe5\x99\xa8\xe5\xa4\xb1\xe8\xb4\xa5");
                 abort();
             }
+            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
             break;
         case WM_TIMER:
             pub->paint_frame();
