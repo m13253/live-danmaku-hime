@@ -66,8 +66,9 @@ struct CairoRendererPrivate {
     void paint_text();
     void blend_layers();
 
+    static const uint32_t blur_rounds = 2;
     uint32_t gamma_table[256];
-    uint32_t blur_boxes[3];
+    uint32_t blur_boxes[blur_rounds];
     void generate_blur_boxes();
     std::unique_ptr<uint32_t []> blur_temp[2];
     void gauss_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h);
@@ -297,7 +298,7 @@ void CairoRendererPrivate::blend_layers() {
     gauss_blur(&blur_temp[0][0], &blur_temp[1][0], width, height);
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
-            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[1][i*width + j]];
+            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[0][i*width + j]];
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
@@ -310,7 +311,7 @@ void CairoRendererPrivate::generate_blur_boxes() {
         gamma_table[i] = uint32_t((1-(1-fi)*(1-fi))*double(0xff000000)) & 0xff000000;
     }
 
-    uint32_t n = 3;
+    const uint32_t n = blur_rounds;
     dmhm_assert(config::shadow_radius >= 0);
     double sigma = config::shadow_radius/n;
 
@@ -332,7 +333,7 @@ void CairoRendererPrivate::gauss_blur(uint32_t *scl, uint32_t *tcl, int32_t w, i
     const uint32_t *bxs = blur_boxes;
     box_blur(scl, tcl, w, h, int32_t((bxs[0]-1)/2));
     box_blur(tcl, scl, w, h, int32_t((bxs[1]-1)/2));
-    box_blur(scl, tcl, w, h, int32_t((bxs[2]-1)/2));
+    // box_blur(scl, tcl, w, h, int32_t((bxs[2]-1)/2)); // Two times are enough, the result is in scl instead
 }
 
 void CairoRendererPrivate::box_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
