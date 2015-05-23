@@ -147,20 +147,25 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
         cairo_font_options_destroy(font_options);
     }
 
-    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(p->cairo_text_layer);
-    cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_OVER);
-
     std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     p->print_fps(now);
     p->fetch_danmaku(now);
     p->animate_text(now);
-    p->paint_text();
 
-    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(p->cairo_blend_layer);
-    cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_OVER);
-    p->blend_layers();
+    if(!p->danmaku_list.empty()) {
+        cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_CLEAR);
+        cairo_paint(p->cairo_text_layer);
+        cairo_set_operator(p->cairo_text_layer, CAIRO_OPERATOR_OVER);
+        p->paint_text();
+
+        cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
+        cairo_paint(p->cairo_blend_layer);
+        cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_OVER);
+        p->blend_layers();
+    } else {
+        cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
+        cairo_paint(p->cairo_blend_layer);
+    }
 
     cairo_surface_flush(p->cairo_blend_surface);
     callback(reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(p->cairo_blend_surface)), uint32_t(cairo_image_surface_get_stride(p->cairo_blend_surface)/sizeof (uint32_t)));
@@ -351,7 +356,7 @@ void CairoRendererPrivate::blend_layers() {
     gaussBlur(&blur_temp[0][0], &blur_temp[1][0], width, height);
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
-            blend_bitmap[i*blend_stride + j] = gamma_table[(std::min)(blur_temp[0][i*width + j], 255u)];
+            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[0][i*width + j]];
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
@@ -360,7 +365,7 @@ void CairoRendererPrivate::blend_layers() {
 
 void CairoRendererPrivate::generate_blur_boxes() {
     for(uint32_t i = 0; i < 256; i++) {
-        double fi = i/255;
+        double fi = i/255.0;
         gamma_table[i] = uint32_t((1-(1-fi)*(1-fi))*double(0xff000000)) & 0xff000000;
     }
 
