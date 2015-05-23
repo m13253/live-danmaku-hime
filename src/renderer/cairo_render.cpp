@@ -24,6 +24,7 @@
 #include "../fetcher/fetcher.h"
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -308,7 +309,7 @@ void CairoRendererPrivate::blend_layers() {
         uint32_t iarr = r*2+1;
         for(int32_t i = 0; i < w; i++) {
             int32_t ti = i, li = ti, ri = ti+r*w;
-            uint32_t fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1*fv);
+            uint32_t fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1)*fv;
             for(int32_t j = 0; j < r; j++)
                 val += scl[ti+j*w];
             for(int32_t j = 0; j <= r; j++) {
@@ -349,7 +350,7 @@ void CairoRendererPrivate::blend_layers() {
     gaussBlur(&blur_temp[0][0], &blur_temp[1][0], width, height);
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
-            blend_bitmap[i*blend_stride + j] = std::min(blur_temp[0][i*width + j], 255u) << 24;
+            blend_bitmap[i*blend_stride + j] = (std::min)(blur_temp[0][i*width + j], 255u) << 24;
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
