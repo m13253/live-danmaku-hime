@@ -65,10 +65,9 @@ struct CairoRendererPrivate {
     void paint_text();
     void blend_layers();
 
-    std::unique_ptr<float []> blur_kernel;
-    std::unique_ptr<float []> blur_temp;
-    void generate_blur_kernel();
-
+    uint32_t blur_boxes[3];
+    void generate_blur_boxes();
+    std::unique_ptr<uint32_t []> blur_temp[2];
     
     std::chrono::steady_clock::time_point fps_checkpoint;
     uint32_t fps_count;
@@ -95,7 +94,7 @@ CairoRenderer::CairoRenderer(Application *app) {
     _cairo_mutex_initialize();
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 
-    p->generate_blur_kernel();
+    p->generate_blur_boxes();
 
     p->fps_checkpoint = std::chrono::steady_clock::now();
     p->fps_count = 0;
@@ -128,7 +127,8 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
         p->height = height;
         p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
         p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
-        p->blur_temp.reset(new float[width*height]);
+        p->blur_temp[0].reset(new uint32_t[width*height]);
+        p->blur_temp[1].reset(new uint32_t[width*height]);
     }
     if(!p->cairo_blend_layer)
         p->create_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
@@ -272,8 +272,6 @@ void CairoRendererPrivate::paint_text() {
 }
 
 void CairoRendererPrivate::blend_layers() {
-    uint32_t radius = uint32_t(config::shadow_radius);
-
     cairo_surface_flush(cairo_text_surface);
     cairo_surface_flush(cairo_blend_surface);
     const uint32_t *text_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_text_surface));
@@ -282,55 +280,97 @@ void CairoRendererPrivate::blend_layers() {
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
-    for(uint32_t i = 0; i < width*height; i++)
-        blur_temp[i] = 0.0;
-
-    for(uint32_t y = 0; y < height; y++)
-        for(uint32_t x = 0; x < width; x++) {
-            uint32_t alpha = text_bitmap[y*text_stride + x];
-            if(alpha != 0)
-                for(uint32_t dx = 0; dx <= radius*2; dx++)
-                    if(x+dx >= radius) {
-                        uint32_t column = x+dx-radius;
-                        if(column < width)
-                            blur_temp[y*width + column] += alpha*blur_kernel[dx];
-                    }
+    /* Thanks to http://blog.ivank.net/fastest-gaussian-blur.html
+       I rewrote the original algorithm in C++*/
+    const auto boxBlurH = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+        uint32_t iarr = r*2+1;
+        for(int32_t i = 0; i < h; i++) {
+            int32_t ti = i*w, li = ti, ri = ti+r;
+            uint32_t fv = scl[ti], lv = scl[ti+w-1], val = (r+1)*fv;
+            for(int32_t j = 0; j < r; j++)
+                val += scl[ti+j];
+            for(int32_t j = 0; j <= r; j++) {
+                val += scl[ri++] - fv;
+                tcl[ti++] = val/iarr;
+            }
+            for(int32_t j = r+1; j < w-r; j++) {
+                val += scl[ri++] - scl[li++];
+                tcl[ti++] = val/iarr;
+            }
+            for(int32_t j = w-r; j < w; j++) {
+                val += lv - scl[li++];
+                tcl[ti++] = val/iarr;
+            }
         }
+    };
 
-    for(uint32_t x = 0; x < width; x++)
-        for(uint32_t y = 0; y < height; y++) {
-            float alpha = blur_temp[y*width + x];
-            if(alpha != 0.0f) // It is safe to compare directly since no floating point error may occur
-                for(uint32_t dy = 0; dy <= radius*2; dy++)
-                    if(y+dy >= radius) {
-                        uint32_t row = y+dy-radius;
-                        if(row < height) {
-                            uint32_t old_alpha = blend_bitmap[row*blend_stride + x];
-                            old_alpha += uint32_t(blur_temp[y*width + x]*blur_kernel[dy]/0x100);
-                            blend_bitmap[row*blend_stride + x] = std::min(old_alpha, 0xff0000u);
-                        }
-                    }
+    const auto boxBlurT = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+        uint32_t iarr = r*2+1;
+        for(int32_t i = 0; i < w; i++) {
+            int32_t ti = i, li = ti, ri = ti+r*w;
+            uint32_t fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1*fv);
+            for(int32_t j = 0; j < r; j++)
+                val += scl[ti+j*w];
+            for(int32_t j = 0; j <= r; j++) {
+                val += scl[ri] - fv;
+                tcl[ti] = val/iarr;
+                ri += w; ti += w;
+            }
+            for(int32_t j = r+1; j < h-r; j++) {
+                val += scl[ri] - scl[li];
+                tcl[ti] = val/iarr;
+                li += w; ri += w; ti += w;
+            }
+            for(int32_t j = h-r; h < h; j++) {
+                val += lv - scl[li];
+                tcl[ti] = val/iarr;
+                li += w; ti += w;
+            }
         }
+    };
 
-    for(uint32_t i = 0; i < blend_stride*height; i++)
-        blend_bitmap[i] = uint32_t((1-(1-blend_bitmap[i]/double(0xff0000))*(1-blend_bitmap[i]/double(0xff0000)))*0xff000000) & 0xff000000;
+    const auto boxBlur = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r) {
+        for(int32_t i = 0; i < w*h; i++)
+            tcl[i] = scl[i];
+        boxBlurH(tcl, scl, w, h, r);
+        boxBlurT(scl, tcl, w, h, r);
+    };
+
+    const auto gaussBlur = [&](uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h) {
+        const uint32_t *bxs = blur_boxes;
+        boxBlur(scl, tcl, w, h, int32_t((bxs[0]-1)/2));
+        boxBlur(tcl, scl, w, h, int32_t((bxs[1]-1)/2));
+        boxBlur(scl, tcl, w, h, int32_t((bxs[2]-1)/2));
+    };
+
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++)
+            blur_temp[0][i*width + j] = text_bitmap[i*text_stride + j] >> 24;
+    gaussBlur(&blur_temp[0][0], &blur_temp[1][0], width, height);
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++)
+            blend_bitmap[i*blend_stride + j] = std::min(blur_temp[0][i*width + j], 255u) << 24;
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
     cairo_paint(cairo_blend_layer);
 }
 
-void CairoRendererPrivate::generate_blur_kernel() {
+void CairoRendererPrivate::generate_blur_boxes() {
+    uint32_t n = 3;
     dmhm_assert(config::shadow_radius >= 0);
-    int32_t radius = int32_t(config::shadow_radius);
+    double sigma = config::shadow_radius/n;
 
-    blur_kernel.reset(new float[radius*2+1]);
-    float db_sq_sigma = radius*radius*2/9.0;
-    float sum = 0;
-    for(int32_t i = 0; i <= radius*2; i++)
-        sum += blur_kernel[i] = exp(-(i-radius)*(i-radius)/db_sq_sigma);
-    for(int32_t i = 0; i <= radius*2; i++)
-        blur_kernel[i] /= sum;
+    double wIdeal = std::sqrt(12*sigma*sigma/n+1);
+    uint32_t wl = std::floor(wIdeal);
+    if((wl & 1) == 0)
+        wl--;
+    uint32_t wu = wl+2;
+    double mIdeal = (12*sigma*sigma - n*wl*wl - 4*n*wl - 3*n)/(-4*wl - 4);
+    uint32_t m = uint32_t(mIdeal);
+
+    for(uint32_t i = 0; i < n; i++)
+        blur_boxes[i] = i<m ? wl : wu;
 }
 
 }
