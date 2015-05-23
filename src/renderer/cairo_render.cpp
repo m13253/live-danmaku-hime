@@ -297,7 +297,7 @@ void CairoRendererPrivate::blend_layers() {
     gauss_blur(&blur_temp[0][0], &blur_temp[1][0], width, height);
     for(uint32_t i = 0; i < height; i++)
         for(uint32_t j = 0; j < width; j++)
-            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[0][i*width + j]];
+            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[1][i*width + j]];
 
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
