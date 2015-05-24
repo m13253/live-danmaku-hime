@@ -18,6 +18,8 @@
 */
 
 #include "app.h"
+#include "config.h"
+#include "load_config.h"
 #include "fetcher/fetcher.h"
 #include "renderer/renderer.h"
 #include "presenter/presenter.h"
@@ -32,9 +34,10 @@ struct ApplicationPrivate {
 };
 
 Application::Application() {
+    load_config(config::config_filename);
     p->fetcher.reset(new Fetcher(this));
-    p->renderer.reset(new Renderer(this));
     p->presenter.reset(new Presenter(this));
+    p->renderer.reset(new Renderer(this));
 }
 
 Application::~Application() {

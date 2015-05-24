@@ -15,7 +15,7 @@ export CPPFLAGS:=$(CPPFLAGS) -I$(startdir)/include
 export LDFLAGS:=$(LDFLAGS) -L$(startdir)/lib -L.
 export PKG_CONFIG_PATH:=$(startdir)/lib/pkgconfig
 
-all: lib/libcairo.a lib/libharfbuzz.a lib/libfreetype.a.2pass
+all: lib/libcairo.a lib/libharfbuzz.a lib/libfreetype.a.2pass lib/libconfuse.a
 
 clean:
 	rm -rfv flag build lib include
@@ -50,6 +50,9 @@ src/zlib.tar.xz:
 
 src/bzip2.tar.gz:
 	./stable_fetch $@ http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz
+
+src/confuse.tar.gz:
+	./stable_fetch $@ http://savannah.nongnu.org/download/confuse/confuse-2.7.tar.gz
 
 lib/libcairo.a: src/cairo.tar.xz flag lib/libpixman-1.a lib/libpng.a lib/libfreetype.a.2pass
 	rm -rfv build/cairo
@@ -126,3 +129,11 @@ lib/libbz2.a: src/bzip2.tar.gz flag
 	$(MAKE) -C build/bzip2/bzip2-* libbz2.a AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 	install build/bzip2/bzip2-*/libbz2.a $@
 	cp build/bzip2/bzip2-*/bzlib.h include/bzlib.h
+
+lib/libconfuse.a: src/confuse.tar.gz flag
+	rm -rfv build/confuse
+	mkdir -p build/confuse
+	tar xzf $< -C build/confuse
+	(cd build/confuse/confuse-* && ./configure --prefix "$(startdir)" --host "$(HOSTARCH)" --disable-shared --enable-static --disable-examples)
+	$(MAKE) -C build/confuse/confuse-*
+	$(MAKE) -C build/confuse/confuse-* install

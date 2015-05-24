@@ -19,8 +19,9 @@ add_executable(live_danmaku_hime ${SRC_MAIN} ${SRC_FETCHER} ${SRC_RENDERER} ${SR
 if(WIN32)
     target_include_directories(live_danmaku_hime PRIVATE "3rd-party/include" "3rd-party/include/freetype2")
     find_library(LIB_CAIRO cairo "3rd-party/lib")
+    find_library(LIB_CONFUSE confuse "3rd-party/lib")
     find_library(LIB_THIN_BUNDLE thin_bundle "3rd-party/lib")
-    target_link_libraries(live_danmaku_hime PUBLIC "${LIB_CAIRO}" "${LIB_THIN_BUNDLE}" "winpthread")
+    target_link_libraries(live_danmaku_hime PUBLIC "${LIB_CAIRO}" "${LIB_THIN_BUNDLE}" "${LIB_CONFUSE}" "winpthread")
 endif()
 
 set_target_properties(live_danmaku_hime PROPERTIES

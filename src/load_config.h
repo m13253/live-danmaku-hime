@@ -17,28 +17,8 @@
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#pragma once
-
-#include <cstdint>
-
 namespace dmhm {
-namespace config {
 
-extern const char *const config_filename;
+int load_config(const char *config_filename);
 
-extern uint32_t stage_width;
-extern uint32_t extra_line_height;
-
-extern const char *font_file;
-extern uint32_t font_file_index;
-extern double font_size;
-extern double shadow_radius;
-
-extern double danmaku_lifetime;
-extern double danmaku_attack;
-extern double danmaku_decay;
-
-extern uint32_t max_fps;
-
-}
 }

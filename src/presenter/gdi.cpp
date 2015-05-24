@@ -272,7 +272,7 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
             pub->p->get_stage_rect(pub);
             pub->p->create_buffer(pub);
             ShowWindow(hWnd, SW_SHOW);
-            if(!SetTimer(hWnd, 0, 16, nullptr)) {
+            if(!SetTimer(hWnd, 0, 1000/config::max_fps, nullptr)) {
                 pub->report_error("\xe5\x90\xaf\xe5\x8a\xa8\xe5\x8a\xa8\xe7\x94\xbb\xe5\xae\x9a\xe6\x97\xb6\xe5\x99\xa8\xe5\xa4\xb1\xe8\xb4\xa5");
                 abort();
             }

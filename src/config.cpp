@@ -19,26 +19,27 @@
 
 #pragma once
 
+#include "config.h"
 #include <cstdint>
 
 namespace dmhm {
 namespace config {
 
-extern const char *const config_filename;
+const char *const config_filename = "live_danmaku_hime.conf";
 
-extern uint32_t stage_width;
-extern uint32_t extra_line_height;
+uint32_t stage_width = 480;
+uint32_t extra_line_height = 8;
 
-extern const char *font_file;
-extern uint32_t font_file_index;
-extern double font_size;
-extern double shadow_radius;
+const char *font_file = "font.ttf";
+uint32_t font_file_index = 0;
+double font_size = 24;
+double shadow_radius = 8;
 
-extern double danmaku_lifetime;
-extern double danmaku_attack;
-extern double danmaku_decay;
+double danmaku_lifetime = 10;
+double danmaku_attack = 0.5;
+double danmaku_decay = 1;
 
-extern uint32_t max_fps;
+uint32_t max_fps = 60;
 
 }
 }
