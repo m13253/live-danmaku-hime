@@ -313,7 +313,7 @@ void CairoRendererPrivate::generate_blur_boxes() {
 
     const uint32_t n = blur_rounds;
     dmhm_assert(config::shadow_radius >= 0);
-    double sigma = config::shadow_radius/n;
+    double sigma = config::shadow_radius/3;
 
     double wIdeal = std::sqrt(12*sigma*sigma/n+1);
     uint32_t wl = std::floor(wIdeal);
