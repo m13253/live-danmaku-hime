@@ -183,6 +183,11 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
     } else {
         cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_CLEAR);
         cairo_paint(p->cairo_blend_layer);
+        cairo_set_operator(p->cairo_blend_layer, CAIRO_OPERATOR_OVER);
+        /* Workaround a wine bug by lighting up a few pixels */
+        cairo_set_source_rgba(p->cairo_blend_layer, 0.5, 0.5, 0.5, 0.004);
+        cairo_rectangle(p->cairo_blend_layer, 0.5, 0.5, 2, 2);
+        cairo_fill(p->cairo_blend_layer);
     }
 
     cairo_surface_flush(p->cairo_blend_surface);
@@ -293,7 +298,6 @@ void CairoRendererPrivate::paint_text() {
         cairo_set_source_rgba(cairo_text_layer, 1, 1, 1, i.alpha);
         cairo_show_text(cairo_text_layer, i.entry.message.c_str());
     }
-    cairo_stroke(cairo_text_layer);
 }
 
 void CairoRendererPrivate::blend_layers() {
