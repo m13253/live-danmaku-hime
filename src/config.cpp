@@ -17,8 +17,6 @@
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#pragma once
-
 #include "config.h"
 #include <cstdint>
 
