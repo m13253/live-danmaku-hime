@@ -22,6 +22,7 @@
 #include "../app.h"
 #include "../config.h"
 #include "../fetcher/fetcher.h"
+#include "../presenter/presenter.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
@@ -89,8 +90,20 @@ CairoRenderer::CairoRenderer(Application *app) {
     ft_error = FT_Init_FreeType(&p->freetype);
     dmhm_assert(ft_error == 0);
     ft_error = FT_New_Face(p->freetype, config::font_file, config::font_file_index, &p->ft_font_face);
-    dmhm_assert(ft_error != FT_Err_Cannot_Open_Resource);
-    dmhm_assert(ft_error != FT_Err_Unknown_File_Format);
+    if(ft_error == FT_Err_Cannot_Open_Resource) {
+        Presenter *presenter = reinterpret_cast<Presenter *>(app->get_presenter());
+        dmhm_assert(presenter);
+        // Failed to open font file
+        presenter->report_error(std::string("\xe6\x89\x93\xe5\xbc\x80\xe5\xad\x97\xe4\xbd\x93\xe6\x96\x87\xe4\xbb\xb6\x20")+config::font_file+std::string("\x20\xe5\xa4\xb1\xe8\xb4\xa5"));
+        abort();
+    }
+    if(ft_error == FT_Err_Unknown_File_Format) {
+        Presenter *presenter = reinterpret_cast<Presenter *>(app->get_presenter());
+        dmhm_assert(presenter);
+        // Unsupported font format
+        presenter->report_error(std::string("\xe6\x97\xa0\xe6\xb3\x95\xe8\xaf\x86\xe5\x88\xab\xe7\x9a\x84\xe5\xad\x97\xe4\xbd\x93\xe6\x96\x87\xe4\xbb\xb6\x20")+config::font_file);
+        abort();
+    }
     dmhm_assert(ft_error == 0);
     ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
     dmhm_assert(ft_error == 0);

@@ -33,6 +33,7 @@ namespace dmhm {
 struct GDIPresenterPrivate {
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     static std::map<HWND, GDIPresenter *> hWndMap; // tree_map is enogh, not necessarily need a unordered_map
+    bool presenter_ready = false;
     Application *app = nullptr;
     HINSTANCE hInstance = nullptr;
     HWND hWnd = nullptr;
@@ -141,6 +142,7 @@ void GDIPresenter::paint_frame() {
 }
 
 int GDIPresenter::run_loop() {
+    p->presenter_ready = true;
     MSG message;
     while(GetMessageW(&message, nullptr, 0, 0)) {
         TranslateMessage(&message);
@@ -279,7 +281,8 @@ LRESULT CALLBACK GDIPresenterPrivate::WndProc(HWND hWnd, UINT uMsg, WPARAM wPara
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
             break;
         case WM_TIMER:
-            pub->paint_frame();
+            if(pub->p->presenter_ready)
+                pub->paint_frame();
             break;
         }
     }
