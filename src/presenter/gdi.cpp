@@ -52,7 +52,23 @@ GDIPresenter::GDIPresenter(Application *app) {
     p->app = app;
     p->hInstance = GetModuleHandleW(nullptr);
 
-    //SetProcessDPIAwareness(Process_System_DPI_Aware);
+    bool set_dpi_awareness_success = false;
+    HMODULE SHCore_dll = LoadLibraryW(L"SHCore.dll");
+    if(SHCore_dll) {
+        auto dyn_SetProcessDpiAwareness = reinterpret_cast<HRESULT WINAPI (*)(int)>(GetProcAddress(SHCore_dll, "SetProcessDpiAwareness"));
+        if(dyn_SetProcessDpiAwareness && dyn_SetProcessDpiAwareness(2 /* Process_Per_Monitor_DPI_Aware */) == S_OK)
+            set_dpi_awareness_success = true;
+        FreeLibrary(SHCore_dll);
+    }
+    if(!set_dpi_awareness_success) {
+        HMODULE User32_dll = LoadLibraryW(L"User32.dll");
+        if(User32_dll) {
+            auto dyn_SetProcessDPIAware = reinterpret_cast<BOOL WINAPI (*)()>(GetProcAddress(User32_dll, "SetProcessDPIAware"));
+            if(dyn_SetProcessDPIAware)
+                dyn_SetProcessDPIAware();
+        }
+        FreeLibrary(User32_dll);
+    }
 
     /* Register window class */
     WNDCLASSEXW wnd_class;
