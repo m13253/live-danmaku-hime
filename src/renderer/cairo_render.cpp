@@ -110,8 +110,10 @@ CairoRenderer::CairoRenderer(Application *app) {
 
     /* There is a bug in _cairo_ft_unscaled_font_map_lock,
        causing mutex not being initialized correctly.
-       I will hack it dirtly by calling a private API. */
+       I will hack it dirtly by calling a private API.
+       This problem only occurs on static linking. */
     _cairo_mutex_initialize();
+
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 
     p->generate_blur_boxes();
