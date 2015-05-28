@@ -9,7 +9,11 @@ It hangs on the right side of your desktop and displays comments from your audie
 
 You need [MSYS2](https://msys2.github.io/) or Linux, with [i686-w64-mingw32 cross compiler](http://mingw-w64.org/) and [CMake](http://www.cmake.org/) installed.
 
-Go to the directory `3rd-party`, type `make`. Then back to the main directory, type `./configure -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-i686-w64-mingw32.cmake` and `make`.
+First go to the directory `3rd-party`, type `make`. This will download and compile third party libraries including [Cairo](http://www.cairographics.org/), [FreeType](http://www.freetype.org/) and [libconfuse](http://www.nongnu.org/confuse/).
+
+Then back to the main directory, type `./configure -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-i686-w64-mingw32.cmake` and `make`.
+
+There are reports of success build with Microsoft VC++ compiler, but they are not tested and need some hack.
 
 ## Compiling for Linux/Gtk+ backend
 
@@ -31,7 +35,7 @@ _Still under development._
 
 For the following websites, choose the frontends below:
 
-- David Huang's SinaDanmakuHime for kan.sina.com.cn (Link missing)
+- David Huang's [SinaDanmakuHime](https://github.com/hjc4869/SinaDanmakuHime.GUI) for [kan.sina.com.cn](http://kan.sina.com.cn/)
 
 - _Still under development_
 
