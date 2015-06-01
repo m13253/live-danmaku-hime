@@ -35,7 +35,9 @@ _Still under development._
 
 For the following websites, choose the frontends below:
 
-- David Huang's [SinaDanmakuHime](https://github.com/hjc4869/SinaDanmakuHime.GUI) for [kan.sina.com.cn](http://kan.sina.com.cn/)
+- [sina-live-fetcher](https://github.com/m13253/sina-live-fetcher/tree/master/live-comment-fetcher) written in Go for [kan.sina.com.cn](http://kan.sina.com.cn/)
+
+- David Huang's [SinaDanmakuHime](https://github.com/hjc4869/SinaDanmakuHime.GUI) written in C# for [kan.sina.com.cn](http://kan.sina.com.cn/)
 
 - _Still under development_
 
