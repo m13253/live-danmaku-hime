@@ -246,7 +246,7 @@ void CairoRendererPrivate::fetch_danmaku(std::chrono::steady_clock::time_point n
     is_eof = fetcher->is_eof();
     fetcher->pop_messages([&](DanmakuEntry &entry) {
         DanmakuAnimator animator(entry);
-        animator.y = height-config::shadow_radius;
+        animator.y = height-(config::extra_line_height+config::shadow_radius);
         cairo_text_extents_t text_extents;
         cairo_text_extents(cairo_text_layer, animator.entry.message.c_str(), &text_extents);
         animator.height = text_extents.height+config::extra_line_height;
