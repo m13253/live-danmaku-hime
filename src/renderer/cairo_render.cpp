@@ -54,6 +54,8 @@ struct CairoRendererPrivate {
 
     cairo_surface_t *cairo_blend_surface = nullptr;
     cairo_t *cairo_blend_layer = nullptr;
+    cairo_surface_t *cairo_blur_surface = nullptr;
+    cairo_t *cairo_blur_layer = nullptr;
     cairo_surface_t *cairo_text_surface = nullptr;
     cairo_t *cairo_text_layer = nullptr;
 
@@ -71,7 +73,6 @@ struct CairoRendererPrivate {
     uint32_t gamma_table[256];
     uint32_t blur_boxes[blur_rounds];
     void generate_blur_boxes();
-    std::unique_ptr<uint32_t []> blur_temp[2];
     void gauss_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h);
     static void box_blur(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r);
     static void box_blur_H(uint32_t *scl, uint32_t *tcl, int32_t w, int32_t h, int32_t r);
@@ -148,12 +149,13 @@ bool CairoRenderer::paint_frame(uint32_t width, uint32_t height, std::function<v
         p->width = width;
         p->height = height;
         p->release_cairo(p->cairo_text_surface, p->cairo_text_layer);
+        p->release_cairo(p->cairo_blur_surface, p->cairo_blur_layer);
         p->release_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
-        p->blur_temp[0].reset(new uint32_t[width*height]);
-        p->blur_temp[1].reset(new uint32_t[width*height]);
     }
     if(!p->cairo_blend_layer)
         p->create_cairo(p->cairo_blend_surface, p->cairo_blend_layer);
+    if(!p->cairo_blur_layer)
+        p->create_cairo(p->cairo_blur_surface, p->cairo_blur_layer);
     if(!p->cairo_text_layer) {
         p->create_cairo(p->cairo_text_surface, p->cairo_text_layer);
         cairo_set_font_face(p->cairo_text_layer, p->cairo_font_face);
@@ -304,21 +306,26 @@ void CairoRendererPrivate::paint_text() {
 
 void CairoRendererPrivate::blend_layers() {
     cairo_surface_flush(cairo_text_surface);
-    cairo_surface_flush(cairo_blend_surface);
     const uint32_t *text_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_text_surface));
     uint32_t text_stride = uint32_t(cairo_image_surface_get_stride(cairo_text_surface)/sizeof (uint32_t));
+    cairo_surface_flush(cairo_blur_surface);
+    uint32_t *blur_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blur_surface));
+    uint32_t blur_stride = uint32_t(cairo_image_surface_get_stride(cairo_blur_surface)/sizeof (uint32_t));
     cairo_surface_flush(cairo_blend_surface);
     uint32_t *blend_bitmap = reinterpret_cast<uint32_t *>(cairo_image_surface_get_data(cairo_blend_surface));
     uint32_t blend_stride = uint32_t(cairo_image_surface_get_stride(cairo_blend_surface)/sizeof (uint32_t));
 
-    for(uint32_t i = 0; i < height; i++)
-        for(uint32_t j = 0; j < width; j++)
-            blur_temp[0][i*width + j] = text_bitmap[i*text_stride + j] >> 24;
-    gauss_blur(&blur_temp[0][0], &blur_temp[1][0], width, height);
-    for(uint32_t i = 0; i < height; i++)
-        for(uint32_t j = 0; j < width; j++)
-            blend_bitmap[i*blend_stride + j] = gamma_table[blur_temp[0][i*width + j]];
+    dmhm_assert(blur_stride == blend_stride);
 
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++)
+            blur_bitmap[i*blend_stride + j] = text_bitmap[i*text_stride + j] >> 24;
+    gauss_blur(blur_bitmap, blend_bitmap, blend_stride, height);
+    for(uint32_t i = 0; i < height; i++)
+        for(uint32_t j = 0; j < width; j++)
+            blend_bitmap[i*blend_stride + j] = gamma_table[blur_bitmap[i*blur_stride + j]];
+
+    cairo_surface_mark_dirty(cairo_blur_surface);
     cairo_surface_mark_dirty(cairo_blend_surface);
     cairo_set_source_surface(cairo_blend_layer, cairo_text_surface, 0, 0);
     cairo_paint(cairo_blend_layer);
