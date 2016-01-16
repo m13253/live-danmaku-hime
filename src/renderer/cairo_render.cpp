@@ -35,7 +35,9 @@
 #include <cairo/cairo-ft.h>
 #include "freetype_includer.h"
 
+#ifdef CAIRO_STATIC_WORKAROUND
 extern "C" void _cairo_mutex_initialize();
+#endif
 
 namespace dmhm {
 
@@ -109,11 +111,13 @@ CairoRenderer::CairoRenderer(Application *app) {
     ft_error = FT_Set_Char_Size(p->ft_font_face, 0, FT_F26Dot6(config::font_size*64), 72, 72);
     dmhm_assert(ft_error == 0);
 
+#ifdef CAIRO_STATIC_WORKAROUND
     /* There is a bug in _cairo_ft_unscaled_font_map_lock,
        causing mutex not being initialized correctly.
        I will hack it dirtly by calling a private API.
        This problem only occurs on static linking. */
     _cairo_mutex_initialize();
+#endif
 
     p->cairo_font_face = cairo_ft_font_face_create_for_ft_face(p->ft_font_face, 0);
 

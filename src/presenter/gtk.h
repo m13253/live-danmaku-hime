@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015 StarBrilliant <m13253@hotmail.com>
+  Copyright (c) 2016 StarBrilliant <m13253@hotmail.com>
   All rights reserved.
 
   Redistribution and use in source and binary forms are permitted
@@ -18,20 +18,28 @@
 */
 
 #pragma once
-#ifdef USE_GDI_PRESENTER
-#include "gdi.h"
-#else
-#include "gtk.h"
-#endif
+#include "../utils.h"
+#include <cstdint>
+#include <string>
 
 namespace dmhm {
 
-struct BasePresenter; // Opaque type
+class GtkPresenter {
 
-#ifdef USE_GDI_PRESENTER
-typedef GDIPresenter Presenter;
-#else
-typedef GtkPresenter Presenter;
-#endif
+public:
+
+    GtkPresenter(class Application *app);
+    ~GtkPresenter();
+    void report_error(const std::string error);
+    void get_stage_size(uint32_t &width, uint32_t &height);
+    void paint_frame();
+    int run_loop();
+
+private:
+
+    proxy_ptr<struct GtkPresenterPrivate> p;
+    friend struct GtkPresenterPrivate;
+
+};
 
 }

@@ -67,9 +67,10 @@ int load_config(const char *config_filename) {
     dmhm_assert(parse_result != CFG_FILE_ERROR);
     dmhm_assert(parse_result != CFG_PARSE_ERROR);
     dmhm_assert(parse_result == CFG_SUCCESS);
-    
+
     dmhm_assert(stage_width > 0);
     dmhm_assert(extra_line_height >= 0);
+    dmhm_assert(font_file != nullptr);
     dmhm_assert(*font_file != '\0');
     dmhm_assert(font_file_index >= 0);
     dmhm_assert(font_size >= 0);
