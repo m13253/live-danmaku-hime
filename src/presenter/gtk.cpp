@@ -37,8 +37,18 @@ struct GtkPresenterPrivate {
 
 GtkPresenter::GtkPresenter(Application *app) {
     p->gtkapp = Gtk::Application::create("com.starbrilliant.live-danmaku-hime");
-    p->window.reset(new Gtk::Window());
     p->get_stage_rect(this);
+    p->window.reset(new Gtk::Window());
+    p->window->set_accept_focus(false);
+    p->window->set_app_paintable(true);
+    p->window->set_decorated(false);
+    p->window->set_focus_on_map(false);
+    p->window->set_keep_above(true);
+    p->window->set_skip_pager_hint(true);
+    p->window->set_skip_taskbar_hint(true);
+    Gdk::RGBA transparent;
+    transparent.set_rgba(0, 0, 0, 1);
+    p->window->override_background_color(transparent);
     p->window->move(p->left, p->top);
     p->window->resize(p->right - p->left, p->bottom - p->top);
     p->window->show();
