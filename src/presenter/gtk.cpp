@@ -70,6 +70,7 @@ GtkPresenter::GtkPresenter(Application *app) {
     uint32_t width, height;
     get_stage_size(width, height);
     p->window->resize(width, height);
+    p->window->stick();
 
     Glib::RefPtr<Gdk::Screen> screen = p->window->get_screen();
     Glib::RefPtr<Gdk::Visual> visual = screen->get_rgba_visual();
@@ -144,8 +145,6 @@ bool GtkPresenterPrivate::Window::on_draw(const Cairo::RefPtr<Cairo::Context> &c
 
     uint32_t width, height;
     pub->get_stage_size(width, height);
-    move(pub->p->left, pub->p->top);
-    resize(width, height);
 
     Cairo::RectangleInt click_rect = { 0, 0, 1, 1 };
     input_shape_combine_region(Cairo::Region::create(click_rect));
