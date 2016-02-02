@@ -58,6 +58,7 @@ GtkPresenter::GtkPresenter(Application *app) {
     p->get_stage_rect(this);
     p->window.reset(new GtkPresenterPrivate::Window(this));
 
+    p->window->set_title("\xe5\xbc\xb9\xe5\xb9\x95\xe5\xa7\xac");
     p->window->set_accept_focus(false);
     p->window->set_app_paintable(true);
     p->window->set_decorated(false);
