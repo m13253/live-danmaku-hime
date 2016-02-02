@@ -135,6 +135,7 @@ void GtkPresenterPrivate::do_paint(GtkPresenter *pub, const Cairo::RefPtr<Cairo:
     Cairo::RefPtr<Cairo::ImageSurface> surface = Cairo::ImageSurface::create(reinterpret_cast<unsigned char *>(const_cast<uint32_t *>(bitmap)), Cairo::FORMAT_ARGB32, width, height, stride*sizeof (uint32_t));
     cr->set_source(surface, 0, 0);
     cr->move_to(0, 0);
+    cr->set_operator(Cairo::OPERATOR_SOURCE);
     cr->paint();
 }
 
