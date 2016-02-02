@@ -17,7 +17,11 @@ There are reports of success build with Microsoft VC++ compiler, but they are no
 
 ## Compiling for Linux/Gtk+ backend
 
-_Still under development._
+First, install [CMake](https://cmake.org/).
+
+Then install these libraries: [gtkmm-3.0](http://www.gtkmm.org/), [Cairo](http://www.cairographics.org/), [FreeType](http://www.freetype.org/) and [libconfuse](http://www.nongnu.org/confuse/).
+
+Type `./configure` and `make`.
 
 ## Getting ready for running
 
