@@ -151,7 +151,7 @@ void GDIPresenter::paint_frame() {
 
     Renderer *renderer = reinterpret_cast<Renderer *>(p->app->get_renderer());
     dmhm_assert(renderer);
-    if(!renderer->paint_frame(width, height, [=](const uint32_t *bitmap, uint32_t stride) {
+    if(!renderer->paint_frame(width, height, [&](const uint32_t *bitmap, uint32_t stride) {
         p->do_paint(this, bitmap, width, height, stride);
     }))
         PostQuitMessage(0);

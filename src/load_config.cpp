@@ -36,16 +36,16 @@ static char str_danmaku_decay[] = "danmaku_decay";
 static char str_max_fps[] = "max_fps";
 
 int load_config(const char *config_filename) {
-    int stage_width = config::stage_width;
-    int extra_line_height = config::extra_line_height;
+    long int stage_width = config::stage_width;
+    long int extra_line_height = config::extra_line_height;
     char *font_file = strdup(config::font_file);
-    int font_file_index = config::font_file_index;
+    long int font_file_index = config::font_file_index;
     double font_size = config::font_size;
     double shadow_radius = config::shadow_radius;
     double danmaku_lifetime = config::danmaku_lifetime;
     double danmaku_attack = config::danmaku_attack;
     double danmaku_decay = config::danmaku_decay;
-    int max_fps = config::max_fps;
+    long int max_fps = config::max_fps;
 
     cfg_opt_t opts[] = {
         CFG_SIMPLE_INT(str_stage_width, &stage_width),
