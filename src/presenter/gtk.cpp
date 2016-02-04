@@ -27,8 +27,6 @@
 #include <memory>
 #include <gtkmm.h>
 
-#include <cstdio>
-
 namespace dmhm {
 
 struct GtkPresenterPrivate {
@@ -64,12 +62,13 @@ GtkPresenter::GtkPresenter(Application *app) {
     p->window->set_decorated(false);
     p->window->set_focus_on_map(false);
     p->window->set_keep_above(true);
+    p->window->set_resizable(false);
     p->window->set_skip_pager_hint(true);
     p->window->set_skip_taskbar_hint(true);
     p->window->move(p->left, p->top);
     uint32_t width, height;
     get_stage_size(width, height);
-    p->window->resize(width, height);
+    p->window->set_size_request(width, height);
     p->window->stick();
 
     Glib::RefPtr<Gdk::Screen> screen = p->window->get_screen();
@@ -87,6 +86,10 @@ GtkPresenter::GtkPresenter(Application *app) {
         paint_frame();
         return true;
     }, 1000/config::max_fps);
+    Glib::signal_timeout().connect([&]() -> bool {
+        p->window->move(p->left, p->top);
+        return true;
+    }, 1000);
 }
 
 GtkPresenter::~GtkPresenter() {
