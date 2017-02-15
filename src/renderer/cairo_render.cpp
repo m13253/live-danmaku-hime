@@ -412,7 +412,7 @@ void CairoRendererPrivate::box_blur_T(uint32_t *scl, uint32_t *tcl, int32_t w, i
             tcl[ti] = val/iarr;
             li += w; ri += w; ti += w;
         }
-        for(int32_t j = h-r; h < h; j++) {
+        for(int32_t j = h-r; j < h; j++) {
             val += lv - scl[li];
             tcl[ti] = val/iarr;
             li += w; ti += w;
